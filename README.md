@@ -5,8 +5,8 @@ Aplicación web para la comunidad universitaria orientada a centralizar el repor
 ---
 
 ## 👥 Integrantes del Equipo
-* **Sebastián Caicedo**[cite: 1]
-* **Javier Carta**[cite: 1]
+* **Sebastián Caicedo**.
+* **Javier Carta**.
 
 ## 📌 Datos de la Asignatura
 * **Asignatura:** Ingeniería de Software[cite: 1]
