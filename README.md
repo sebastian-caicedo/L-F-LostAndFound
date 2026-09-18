@@ -26,9 +26,9 @@ En el campus universitario, la pérdida de pertenencias personales es cotidiana 
 
 ## 🛠️ Tecnologías Utilizadas
 
-* **Frontend:** [Por definir, ej. Astro / HTML / Tailwind / React]
-* **Backend:** [Por definir, ej. FastAPI / Python / Node.js]
-* **Base de Datos:** [Por definir, ej. SQLite / PostgreSQL / MongoDB]
+* **Frontend:** Astro.
+* **Backend:** FastAPI(Python).
+* **Base de Datos:** SQLite.
 * **Control de Versiones:** Git & GitHub
 * **Gestión de Proyecto:** Jira / Trello / Taiga
 
