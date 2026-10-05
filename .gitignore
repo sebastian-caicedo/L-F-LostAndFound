@@ -1,0 +1,23 @@
+# Python
+__pycache__/
+*.pyc
+venv/
+.venv/
+.pytest_cache/
+
+# Node / Astro
+node_modules/
+dist/
+.astro/
+
+# Variables de entorno (nunca subir)
+.env
+
+# Base de datos local
+*.db
+*.sqlite3
+
+# Editores y sistema
+.vscode/
+.idea/
+.DS_Store
