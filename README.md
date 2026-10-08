@@ -1,8 +1,8 @@
 # L&F — Lost And Found
 
-Sistema web para la **gestión de objetos perdidos y encontrados en una institución universitaria**. El encargado registra objetos y estudiantes, gestiona reclamaciones, compara la información del reclamante con las características del objeto y decide si aprueba o rechaza, con trazabilidad completa de decisiones y entregas.
+Sistema web para la **gestión de objetos perdidos y encontrados en una institución universitaria**. El encargado registra estudiantes y objetos, gestiona reclamaciones, compara la información del reclamante con las características del objeto y decide si aprueba o rechaza. Cada decisión y cada entrega quedan registradas con trazabilidad completa.
 
-**Estado:** MVP en desarrollo · **Inicio:** 24/08/2026 · **Metodología:** Scrum con tablero Kanban
+**Estado:** MVP en desarrollo (Fase 1 — base del proyecto) · **Inicio:** 24/08/2026 · **Metodología:** Scrum con tablero Kanban
 
 ## Problema que resuelve
 
@@ -10,7 +10,9 @@ Sin un mecanismo centralizado, nadie sabe con certeza qué objetos fueron encont
 
 ## Usuario
 
-El **encargado de objetos perdidos** es el único usuario de la aplicación. El estudiante no la usa directamente: el encargado registra sus datos cuando reporta una pérdida o reclama un objeto. La decisión sobre cada reclamación es siempre manual; el sistema solo facilita la comparación.
+El **encargado de objetos perdidos** es el único usuario de la aplicación. El estudiante no la usa directamente: el encargado registra sus datos cuando reporta una pérdida o reclama un objeto.
+
+La decisión sobre cada reclamación es siempre del encargado. El sistema solo facilita la comparación entre el objeto y la información del reclamante.
 
 ## Flujo principal (MVP)
 
@@ -19,6 +21,12 @@ Iniciar sesión → Registrar estudiante → Registrar objeto (perdido / encontr
 → Registrar reclamación y características del reclamante → Revisar y comparar
 → Aprobar o rechazar (motivo obligatorio) → Registrar entrega → Historial
 ```
+
+### Reglas de negocio
+
+- Aprobar o rechazar una reclamación exige un **motivo obligatorio**. El sistema registra automáticamente el **encargado responsable** y la **fecha y hora** de la decisión.
+- La **entrega** solo se registra para reclamaciones **aprobadas** y actualiza el estado del objeto.
+- Toda reclamación se asocia a un estudiante y a un objeto existentes.
 
 ## Requerimientos funcionales
 
@@ -67,44 +75,106 @@ IA para reconocer objetos o personas, decisión automática de reclamaciones, ch
 | Backend | FastAPI (Python) |
 | Base de datos | SQLite |
 | Control de versiones | Git / GitHub |
-| Gestión del proyecto | Jira / Trello (tablero Kanban) |
+| Gestión del proyecto | Tablero Kanban (Scrum) |
 
 ```text
-Encargado → Frontend (Astro) → API HTTP → Backend (FastAPI) → SQLite
+Encargado → Frontend (Astro, :4321) → API HTTP → Backend (FastAPI, :8000) → SQLite
+```
+
+## Estructura del repositorio
+
+```text
+L-F-LostAndFound/
+├── backend/                 # API en FastAPI
+│   ├── app/
+│   │   ├── __init__.py
+│   │   └── main.py          # Punto de entrada de la API (endpoint /health y CORS)
+│   └── requirements.txt     # Dependencias de Python
+├── frontend/                # Interfaz web en Astro
+│   ├── public/              # Archivos estáticos (favicon)
+│   ├── src/pages/           # Páginas de la aplicación
+│   ├── astro.config.mjs
+│   └── package.json
+├── docs/                    # Documentación del proyecto
+│   ├── diagramas/           # Diagramas UML
+│   └── ...                  # Proyecto de Aula y hoja de ruta
+├── .env.example             # Plantilla de variables de entorno (sin valores reales)
+└── README.md
 ```
 
 ## Instalación y ejecución
 
-**Requisitos:** Git, Python [VERIFICAR versión], Node.js y npm.
+### Requisitos
+
+- Git
+- Python [VERIFICAR versión]
+- Node.js 22.12 o superior y npm
+
+### 1. Clonar el repositorio y configurar variables de entorno
 
 ```bash
 git clone https://github.com/sebastian-caicedo/L-F-LostAndFound.git
 cd L-F-LostAndFound
+cp .env.example .env        # En Windows (cmd): copy .env.example .env
+```
 
-cp .env.example .env        # completar valores; no subir credenciales reales
+Completa los valores del archivo `.env`. Ese archivo **no se sube al repositorio**: el repositorio solo contiene `.env.example`, sin credenciales reales.
 
-# Backend (FastAPI)  [VERIFICAR carpeta y comandos]
+### 2. Backend (FastAPI)
+
+```bash
 cd backend
+python -m venv venv
+# Activar el entorno virtual:
+#   Windows:     venv\Scripts\activate
+#   Linux/macOS: source venv/bin/activate
 pip install -r requirements.txt
-uvicorn main:app --reload
+uvicorn app.main:app --reload
+```
 
-# Frontend (Astro)   [VERIFICAR carpeta]
+La API queda disponible en `http://localhost:8000`. Para verificar que funciona, abre `http://localhost:8000/health`; debe responder `{"status": "ok"}`. La documentación interactiva de la API está en `http://localhost:8000/docs`.
+
+### 3. Frontend (Astro)
+
+En otra terminal, desde la raíz del proyecto:
+
+```bash
 cd frontend
 npm install
 npm run dev
 ```
 
+La interfaz queda disponible en `http://localhost:4321`.
+
+## Datos de prueba
+
+La base de datos **no es la de la universidad**. Todos los datos que usa el sistema son de prueba, creados por el equipo. No se almacenan datos reales de personas.
+
 ## Pruebas
 
-```bash
-[VERIFICAR comando, ej: pytest]
-```
+Pendiente (Fase 6 de la hoja de ruta). Las pruebas cubrirán autenticación y permisos, validación de datos, reclamaciones aprobadas y rechazadas, motivo obligatorio, entregas, cambio de estado del objeto y trazabilidad.
 
-Cubren: autenticación y permisos, validación de datos, reclamaciones aprobadas y rechazadas, motivo obligatorio, entregas, cambio de estado del objeto y trazabilidad.
+## Hoja de ruta
+
+| Fase | Contenido | Estado |
+|---|---|---|
+| 1 | Repositorio y entorno de desarrollo | En curso |
+| 2 | Diseño de la base de datos | Pendiente |
+| 3 | Backend | Pendiente |
+| 4 | Frontend | Pendiente |
+| 5 | Integración | Pendiente |
+| 6 | Calidad y pruebas | Pendiente |
+| 7 | Documentación y entrega | Pendiente |
+
+El detalle de cada fase está en la hoja de ruta dentro de [`docs/`](docs/).
 
 ## Documentación
 
-En [`docs/`](docs/): documento del Proyecto de Aula (historias de usuario, elicitación y decisiones de alcance), hoja de ruta y diagramas UML (casos de uso, clases, secuencia, actividades, componentes y despliegue).
+En [`docs/`](docs/) se encuentran:
+
+- El documento del Proyecto de Aula: historias de usuario, elicitación y decisiones de alcance.
+- La hoja de ruta del proyecto.
+- Los diagramas UML en [`docs/diagramas/`](docs/diagramas/): casos de uso, clases, secuencia, actividades, componentes y despliegue.
 
 ## Equipo
 
