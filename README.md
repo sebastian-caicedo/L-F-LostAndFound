@@ -2,7 +2,7 @@
 
 Sistema web para la **gestión de objetos perdidos y encontrados en una institución universitaria**. El encargado registra estudiantes y objetos, gestiona reclamaciones, compara la información del reclamante con las características del objeto y decide si aprueba o rechaza. Cada decisión y cada entrega quedan registradas con trazabilidad completa.
 
-**Estado:** MVP en desarrollo (Fase 1 — base del proyecto) · **Inicio:** 24/08/2026 · **Metodología:** Scrum con tablero Kanban
+**Estado:** MVP en desarrollo (Fase 2 — base de datos) · **Inicio:** 24/08/2026 · **Metodología:** Scrum con tablero Kanban
 
 ## Problema que resuelve
 
@@ -88,7 +88,11 @@ L-F-LostAndFound/
 ├── backend/                 # API en FastAPI
 │   ├── app/
 │   │   ├── __init__.py
-│   │   └── main.py          # Punto de entrada de la API (endpoint /health y CORS)
+│   │   ├── main.py          # Punto de entrada de la API (endpoint /health y CORS)
+│   │   ├── database.py      # Conexión a SQLite (lee DATABASE_URL del .env)
+│   │   └── models.py        # Tablas de la base de datos (SQLAlchemy)
+│   ├── seed.py              # Crea la base y carga datos de prueba
+│   ├── verificar_bd.py      # Verifica relaciones y restricciones de la base
 │   └── requirements.txt     # Dependencias de Python
 ├── frontend/                # Interfaz web en Astro
 │   ├── public/              # Archivos estáticos (favicon)
@@ -97,6 +101,7 @@ L-F-LostAndFound/
 │   └── package.json
 ├── docs/                    # Documentación del proyecto
 │   ├── diagramas/           # Diagramas UML
+│   ├── modelo-datos.md      # Diseño de la base de datos
 │   └── ...                  # Proyecto de Aula y hoja de ruta
 ├── .env.example             # Plantilla de variables de entorno (sin valores reales)
 └── README.md
@@ -118,7 +123,7 @@ cd L-F-LostAndFound
 cp .env.example .env        # En Windows (cmd): copy .env.example .env
 ```
 
-Completa los valores del archivo `.env`. Ese archivo **no se sube al repositorio**: el repositorio solo contiene `.env.example`, sin credenciales reales.
+Completa los valores del archivo `.env`; en particular, asigna una contraseña de prueba a `SEED_ENCARGADO_PASSWORD`. Ese archivo **no se sube al repositorio**: el repositorio solo contiene `.env.example`, sin credenciales reales.
 
 ### 2. Backend (FastAPI)
 
@@ -134,7 +139,18 @@ uvicorn app.main:app --reload
 
 La API queda disponible en `http://localhost:8000`. Para verificar que funciona, abre `http://localhost:8000/health`; debe responder `{"status": "ok"}`. La documentación interactiva de la API está en `http://localhost:8000/docs`.
 
-### 3. Frontend (Astro)
+### 3. Base de datos (SQLite)
+
+Con el entorno virtual activo, desde `backend/`:
+
+```bash
+python seed.py          # Crea las tablas y carga datos de prueba (borra los datos anteriores)
+python verificar_bd.py  # Comprueba relaciones y que se rechacen datos inválidos
+```
+
+Se crea el archivo `backend/lf.db`, que no se sube al repositorio. El usuario de prueba es `encargado`, con la contraseña definida en `SEED_ENCARGADO_PASSWORD`. El diseño del modelo está en [`docs/modelo-datos.md`](docs/modelo-datos.md).
+
+### 4. Frontend (Astro)
 
 En otra terminal, desde la raíz del proyecto:
 
@@ -148,7 +164,7 @@ La interfaz queda disponible en `http://localhost:4321`.
 
 ## Datos de prueba
 
-La base de datos **no es la de la universidad**. Todos los datos que usa el sistema son de prueba, creados por el equipo. No se almacenan datos reales de personas.
+La base de datos **no es la de la universidad**. Todos los datos que usa el sistema son de prueba, creados por el equipo con `backend/seed.py`. No se almacenan datos reales de personas.
 
 ## Pruebas
 
@@ -158,8 +174,8 @@ Pendiente (Fase 6 de la hoja de ruta). Las pruebas cubrirán autenticación y pe
 
 | Fase | Contenido | Estado |
 |---|---|---|
-| 1 | Repositorio y entorno de desarrollo | En curso |
-| 2 | Diseño de la base de datos | Pendiente |
+| 1 | Repositorio y entorno de desarrollo | Completada |
+| 2 | Diseño de la base de datos | En curso |
 | 3 | Backend | Pendiente |
 | 4 | Frontend | Pendiente |
 | 5 | Integración | Pendiente |
@@ -174,6 +190,7 @@ En [`docs/`](docs/) se encuentran:
 
 - El documento del Proyecto de Aula: historias de usuario, elicitación y decisiones de alcance.
 - La hoja de ruta del proyecto.
+- El modelo de datos en [`docs/modelo-datos.md`](docs/modelo-datos.md): diagrama entidad-relación, estados y reglas de integridad.
 - Los diagramas UML en [`docs/diagramas/`](docs/diagramas/): casos de uso, clases, secuencia, actividades, componentes y despliegue.
 
 ## Equipo
