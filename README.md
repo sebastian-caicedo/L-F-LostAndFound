@@ -107,7 +107,7 @@ L-F-LostAndFound/
 ### Requisitos
 
 - Git
-- Python [VERIFICAR versión]
+- Python 3.14.4
 - Node.js 22.12 o superior y npm
 
 ### 1. Clonar el repositorio y configurar variables de entorno
