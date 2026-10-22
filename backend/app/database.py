@@ -22,6 +22,8 @@ from sqlalchemy.orm import DeclarativeBase, sessionmaker
 load_dotenv()
 
 # Si no hay .env, se usa un archivo lf.db en la carpeta desde donde se ejecuta.
+# Se lee aquí directamente (y no desde config.py) para que seed.py y
+# verificar_bd.py funcionen sin necesitar la SECRET_KEY.
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./lf.db")
 
 engine = create_engine(

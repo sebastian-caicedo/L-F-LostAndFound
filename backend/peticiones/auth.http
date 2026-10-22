@@ -1,0 +1,22 @@
+### Peticiones de prueba del módulo de autenticación (RF01)
+### Requiere la extensión REST Client de VS Code: haz clic en "Send Request"
+### encima de cada petición. La API debe estar corriendo (uvicorn app.main:app --reload).
+
+@api = http://localhost:8000
+
+### 1. La API está en funcionamiento (no requiere sesión)
+GET {{api}}/health
+
+### 2. Iniciar sesión. Cambia la contraseña por la de SEED_ENCARGADO_PASSWORD de tu .env
+# @name login
+POST {{api}}/auth/login
+Content-Type: application/x-www-form-urlencoded
+
+username=encargado&password=pon-aqui-tu-contrasena-de-prueba
+
+### 3. Datos del encargado con la sesión abierta (usa el token de la petición 2)
+GET {{api}}/auth/me
+Authorization: Bearer {{login.response.body.access_token}}
+
+### 4. Sin token: debe responder 401
+GET {{api}}/auth/me

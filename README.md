@@ -2,7 +2,7 @@
 
 Sistema web para la **gestión de objetos perdidos y encontrados en una institución universitaria**. El encargado registra estudiantes y objetos, gestiona reclamaciones, compara la información del reclamante con las características del objeto y decide si aprueba o rechaza. Cada decisión y cada entrega quedan registradas con trazabilidad completa.
 
-**Estado:** MVP en desarrollo (Fase 2 — base de datos) · **Inicio:** 24/08/2026 · **Metodología:** Scrum con tablero Kanban
+**Estado:** MVP en desarrollo (Fase 3 — backend) · **Inicio:** 24/08/2026 · **Metodología:** Scrum con tablero Kanban
 
 ## Problema que resuelve
 
@@ -88,9 +88,16 @@ L-F-LostAndFound/
 ├── backend/                 # API en FastAPI
 │   ├── app/
 │   │   ├── __init__.py
-│   │   ├── main.py          # Punto de entrada de la API (endpoint /health y CORS)
+│   │   ├── main.py          # Punto de entrada de la API: CORS y registro de routers
+│   │   ├── config.py        # Configuración leída del .env (SECRET_KEY, CORS, sesión)
 │   │   ├── database.py      # Conexión a SQLite (lee DATABASE_URL del .env)
-│   │   └── models.py        # Tablas de la base de datos (SQLAlchemy)
+│   │   ├── models.py        # Tablas de la base de datos (SQLAlchemy)
+│   │   ├── security.py      # Hash de contraseñas y tokens de sesión
+│   │   ├── deps.py          # Dependencias comunes: sesión de BD y encargado autenticado
+│   │   ├── schemas/         # Datos que entran y salen de la API (Pydantic)
+│   │   ├── services/        # Reglas de negocio
+│   │   └── routers/         # Endpoints HTTP, uno por módulo
+│   ├── peticiones/          # Peticiones de prueba (extensión REST Client)
 │   ├── seed.py              # Crea la base y carga datos de prueba
 │   ├── verificar_bd.py      # Verifica relaciones y restricciones de la base
 │   └── requirements.txt     # Dependencias de Python
@@ -123,7 +130,12 @@ cd L-F-LostAndFound
 cp .env.example .env        # En Windows (cmd): copy .env.example .env
 ```
 
-Completa los valores del archivo `.env`; en particular, asigna una contraseña de prueba a `SEED_ENCARGADO_PASSWORD`. Ese archivo **no se sube al repositorio**: el repositorio solo contiene `.env.example`, sin credenciales reales.
+Completa los valores del archivo `.env`:
+
+- `SECRET_KEY`: clave para firmar los tokens de sesión. Genérala con `python -c "import secrets; print(secrets.token_hex(32))"`. Sin ella, la API no arranca.
+- `SEED_ENCARGADO_PASSWORD`: contraseña del encargado de prueba.
+
+Ese archivo **no se sube al repositorio**: el repositorio solo contiene `.env.example`, sin credenciales reales.
 
 ### 2. Backend (FastAPI)
 
@@ -137,7 +149,7 @@ pip install -r requirements.txt
 uvicorn app.main:app --reload
 ```
 
-La API queda disponible en `http://localhost:8000`. Para verificar que funciona, abre `http://localhost:8000/health`; debe responder `{"status": "ok"}`. La documentación interactiva de la API está en `http://localhost:8000/docs`.
+La API queda disponible en `http://localhost:8000`. Para verificar que funciona, abre `http://localhost:8000/health`; debe responder `{"status": "ok"}`. La documentación interactiva de la API está en `http://localhost:8000/docs`: con el botón **Authorize** se inicia sesión y se pueden probar los endpoints protegidos.
 
 ### 3. Base de datos (SQLite)
 
@@ -161,6 +173,18 @@ npm run dev
 ```
 
 La interfaz queda disponible en `http://localhost:4321`.
+
+## API
+
+Todos los endpoints, excepto `/health` y `/auth/login`, requieren el token de sesión en el encabezado `Authorization: Bearer <token>`. La sesión dura 8 horas (`TOKEN_EXPIRE_HOURS`).
+
+| Método | Ruta | Descripción | RF |
+|---|---|---|---|
+| GET | `/health` | Estado de la API | — |
+| POST | `/auth/login` | Inicia sesión y devuelve el token | RF01 |
+| GET | `/auth/me` | Datos del encargado con la sesión abierta | RF01 |
+
+En `backend/peticiones/` hay peticiones de prueba listas para la extensión REST Client de VS Code.
 
 ## Datos de prueba
 

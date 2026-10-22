@@ -19,8 +19,6 @@ import os
 import sys
 from datetime import date, datetime
 
-import bcrypt
-
 from app.database import Base, SessionLocal, crear_tablas, engine
 from app.models import (
     Decision,
@@ -35,11 +33,7 @@ from app.models import (
     ResultadoDecision,
     TipoRegistro,
 )
-
-
-def hashear(password: str) -> str:
-    """Convierte una contraseña en un hash bcrypt. La contraseña nunca se guarda."""
-    return bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
+from app.security import hashear_password
 
 
 def main() -> None:
@@ -59,7 +53,7 @@ def main() -> None:
         encargado = Encargado(
             nombre="Encargado de Prueba",
             usuario="encargado",
-            password_hash=hashear(password),
+            password_hash=hashear_password(password),
         )
         db.add(encargado)
 
