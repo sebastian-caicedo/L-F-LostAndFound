@@ -175,8 +175,8 @@ Pendiente (Fase 6 de la hoja de ruta). Las pruebas cubrirán autenticación y pe
 | Fase | Contenido | Estado |
 |---|---|---|
 | 1 | Repositorio y entorno de desarrollo | Completada |
-| 2 | Diseño de la base de datos | En curso |
-| 3 | Backend | Pendiente |
+| 2 | Diseño de la base de datos | Completada |
+| 3 | Backend | En curso |
 | 4 | Frontend | Pendiente |
 | 5 | Integración | Pendiente |
 | 6 | Calidad y pruebas | Pendiente |
