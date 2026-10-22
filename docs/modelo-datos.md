@@ -1,6 +1,6 @@
 # Modelo de datos — L&F
 
-Diseño de la base de datos SQLite del sistema. Se implementa con SQLAlchemy en [`backend/app/models.py`](../backend/app/models.py) y parte del diagrama de clases corregido ([`docs/diagramas/`](diagramas/)), con los ajustes de alcance RF19–RF25 de la Fase 3.
+Diseño de la base de datos SQLite del sistema. Se implementa con SQLAlchemy en [`backend/app/models.py`](../backend/app/models.py) y parte del diagrama de clases corregido ([`docs/diagramas/`](diagramas/)), con los ajustes de alcance RF19–RF26 de la Fase 3.
 
 ## Diagrama entidad-relación
 
@@ -132,10 +132,11 @@ erDiagram
 4. **Las fotos se guardan como archivos, no dentro de la base.** La base solo guarda el nombre del archivo, que es aleatorio. Las fotos no son públicas: solo se ven a través de endpoints que exigen sesión.
 5. **El encargado guarda `password_hash`.** Es necesario para el RF01. Se almacena el hash bcrypt, nunca la contraseña.
 6. **La decisión es una tabla aparte.** La reclamación cambia de estado; la decisión es un registro histórico que conserva quién decidió, qué, por qué y cuándo (RNF-05).
-7. **La alerta de intentos fallidos (RF24) no necesita tabla.** Se calcula contando las reclamaciones `RECHAZADA` de cada persona sobre objetos distintos.
+7. **La alerta de intentos fallidos (RF24) no necesita tabla.** Se calcula contando las reclamaciones `RECHAZADA` de cada persona sobre objetos distintos. No cuenta un objeto si un incidente reconoce a esa persona como su dueño real: ese rechazo no fue un intento falso.
 8. **El fraude se registra sin cambiar el estado del objeto.** El objeto ya salió de la oficina; el incidente deja la evidencia y la lección aprendida.
 9. **Edición con trazabilidad (RF25).** Se guarda quién hizo la última edición y cuándo. Un objeto `ENTREGADO` no se puede editar, y el estado nunca se edita a mano.
 10. **Reclamaciones presenciales.** La persona reclama en el mostrador y el encargado decide en el momento. Un objeto puede acumular varias reclamaciones rechazadas, pero solo una aprobada.
+11. **Detección de posibles fraudes (RF26) sin tablas nuevas.** La entrega previa de un objeto se arma con la entrega, la reclamación aprobada, su descripción y su decisión, que ya existen.
 
 ## Dónde se aplica cada regla
 
@@ -154,10 +155,14 @@ erDiagram
 | El incidente explica cómo ocurrió y qué mejorar (RF23) | Base de datos: `CHECK` de texto no vacío |
 | Las fotos son imágenes reales (JPG, PNG, WEBP) de máximo 5 MB | API: se revisan los primeros bytes del archivo |
 | Un objeto `ENTREGADO` no se edita ni cambia de foto (RF25) | API |
-| Solo se reclaman objetos `ENCONTRADO` y `DISPONIBLE` (HCU06) | API (paso 5 de la Fase 3) |
-| La foto se muestra en la reclamación solo después de la descripción (RF21) | API (paso 6 de la Fase 3) |
-| Solo se decide sobre reclamaciones `PENDIENTE` | API (paso 6 de la Fase 3) |
-| Solo se entrega con decisión `APROBADA`; el objeto pasa a `ENTREGADO` (RF15, RF16) | API (paso 7 de la Fase 3) |
+| Solo se reclaman objetos `ENCONTRADO`; no se reclama uno con reclamación aprobada que aún no se entrega (HCU06) | API |
+| Un objeto ya `ENTREGADO` se puede reclamar para comparar, pero no se puede aprobar (RF26) | API |
+| La descripción del reclamante se registra una sola vez y no se modifica (RF07) | API |
+| La comparación (con foto y características) solo se muestra después de la descripción (RF21) | API |
+| No se decide sin descripción del reclamante (HCU08, HCU09) | API |
+| Solo se decide sobre reclamaciones `PENDIENTE` | API |
+| Solo se entrega con decisión `APROBADA`; la entrega y el cambio a `ENTREGADO` se guardan juntos en una transacción (RF15, RF16) | API |
+| El dueño real de un incidente existe y no es quien se llevó el objeto (RF23) | API |
 
 ## Crear y verificar la base
 
@@ -168,7 +173,7 @@ python seed.py          # crea las tablas, borra las fotos anteriores y carga da
 python verificar_bd.py  # comprueba relaciones y que se rechacen datos inválidos
 ```
 
-**Datos de prueba:** 1 encargado, 4 estudiantes, 1 docente, 7 objetos y 7 reclamaciones: una pendiente, dos aprobadas y entregadas (una de ellas con incidente de fraude) y cuatro rechazadas (tres de la misma persona, para la alerta del RF24). Son inventados: no corresponden a personas reales ni a la base de datos de la universidad.
+**Datos de prueba:** 1 encargado, 4 estudiantes, 1 docente, 8 objetos (incluye un reporte de pérdida del docente que coincide con una sombrilla ya entregada) y 7 reclamaciones: una pendiente, dos aprobadas y entregadas (una de ellas con incidente de fraude) y cuatro rechazadas (tres de la misma persona, para la alerta del RF24). Son inventados: no corresponden a personas reales ni a la base de datos de la universidad.
 
 ## Diagrama de clases
 
@@ -176,4 +181,4 @@ El diagrama de clases actualizado con estos cambios está en [`docs/diagramas/di
 
 ## Pendiente para la Fase 7
 
-Agregar los RF19–RF25 al documento del Proyecto de Aula, en la sección de requerimientos y en la tabla de validación y ajuste del alcance, y reemplazar la Figura 2 por el diagrama de clases actualizado.
+Agregar los RF19–RF26 al documento del Proyecto de Aula, en la sección de requerimientos y en la tabla de validación y ajuste del alcance, y reemplazar la Figura 2 por el diagrama de clases actualizado.

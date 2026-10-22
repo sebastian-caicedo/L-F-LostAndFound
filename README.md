@@ -30,7 +30,8 @@ Iniciar sesión → Registrar persona (estudiante o docente) → Registrar objet
 - El código estudiantil se guarda siempre con el formato de la universidad, `T` + 8 dígitos. El encargado puede escribir `t70496` y se guarda `T00070496`.
 - La foto de un objeto encontrado no se muestra en una reclamación hasta registrar la descripción del reclamante.
 - Si una entrega resulta fraudulenta, el objeto sigue `ENTREGADO` y se registra un incidente con cómo ocurrió y qué medida se propone.
-- Una persona con **3 o más reclamaciones rechazadas** de objetos distintos genera una alerta para el encargado. La alerta no bloquea: la decisión sigue siendo del encargado.
+- Una persona con **3 o más reclamaciones rechazadas** de objetos distintos genera una alerta para el encargado. La alerta no bloquea: la decisión sigue siendo del encargado. No cuenta el rechazo de un objeto del que después se comprobó, mediante un incidente, que la persona era el dueño real.
+- Se puede registrar la reclamación de un objeto **ya entregado**. No se puede aprobar, pero la comparación muestra a quién se entregó, cuándo, qué describió esa persona y con qué motivo se aprobó, para evaluar un posible fraude. Lo mismo muestran las coincidencias de un reporte de pérdida.
 
 ## Requerimientos funcionales
 
@@ -66,8 +67,9 @@ Durante la Fase 3 el equipo amplió el alcance con estos requerimientos. Deben r
 | RF21 | Ocultar la foto del objeto en una reclamación hasta registrar la descripción del reclamante | Media |
 | RF22 | Registrar en la entrega una foto de la persona junto al objeto | Alta |
 | RF23 | Registrar incidentes de entregas fraudulentas: cómo ocurrió, medida de mejora y dueño real | Media |
-| RF24 | Alertar al encargado cuando una persona tiene 3 o más reclamaciones rechazadas de objetos distintos | Baja |
+| RF24 | Alertar al encargado cuando una persona tiene 3 o más reclamaciones rechazadas de objetos distintos (sin contar objetos de los que se comprobó que era el dueño real) | Baja |
 | RF25 | Editar los datos de un objeto no entregado, registrando quién y cuándo lo editó | Media |
+| RF26 | Mostrar, al comparar una reclamación o al buscar coincidencias de un reporte de pérdida, si el objeto ya se entregó: a quién, cuándo, qué describió esa persona y con qué motivo se aprobó | Media |
 
 ## Requerimientos no funcionales
 
@@ -217,8 +219,27 @@ Todos los endpoints, excepto `/health` y `/auth/login`, requieren el token de se
 | PATCH | `/objetos/{id}` | Corrige datos de un objeto no entregado | RF25 |
 | PUT | `/objetos/{id}/foto` | Sube o reemplaza la foto de un objeto (JPG, PNG o WEBP, máx. 5 MB) | RF20 |
 | GET | `/objetos/{id}/foto` | Muestra la foto de un objeto | RF20 |
+| GET | `/objetos/{id}/coincidencias` | Objetos encontrados de la misma categoría que un reporte de pérdida, con su entrega si ya se entregaron | RF05, RF26 |
+| GET | `/personas/alertas` | Personas con 3 o más reclamaciones rechazadas de objetos distintos | RF24 |
+| POST | `/reclamaciones` | Registra una reclamación presencial (queda `PENDIENTE`); también de objetos ya entregados, para comparar | RF06, RF26 |
+| POST | `/reclamaciones/{id}/informacion` | Registra la descripción del reclamante (una sola vez) | RF07 |
+| GET | `/reclamaciones` | Lista reclamaciones (por defecto, las pendientes) con su alerta | RF08, RF24 |
+| GET | `/reclamaciones/{id}` | Datos de una reclamación | RF08 |
+| GET | `/reclamaciones/{id}/comparacion` | Objeto y descripción lado a lado, con foto; solo después de la descripción. Si el objeto ya se entregó, muestra esa entrega | RF09, RF21, RF26 |
+| POST | `/reclamaciones/{id}/decision` | Aprueba o rechaza con motivo; encargado y fecha automáticos | RF10–RF14 |
+| POST | `/reclamaciones/{id}/entrega` | Entrega con foto obligatoria; el objeto pasa a `ENTREGADO` | RF15, RF16, RF22 |
+| GET | `/entregas/{id}` | Datos de una entrega | RF18 |
+| GET | `/entregas/{id}/foto` | Foto de la persona con el objeto | RF22 |
+| POST | `/entregas/{id}/incidente` | Registra que la entrega fue fraudulenta | RF23 |
+| GET | `/historial/reclamaciones` | Historial con descripción, decisión y entrega; filtros `estado`, `persona_id`, `objeto_id` | RF17 |
+| GET | `/historial/entregas` | Historial de entregas; filtros `persona_id`, `objeto_id` | RF18 |
+| GET | `/historial/incidentes` | Incidentes de fraude y medidas propuestas | RF23 |
 
 Las fotos no son públicas: solo se ven con sesión iniciada. La lista de objetos no muestra las características, que solo aparecen en el detalle.
+
+**Orden de uso en el mostrador:** registrar la reclamación → registrar lo que describe la persona sin ver el objeto → ver la comparación (aquí aparecen la foto y las características) → decidir con motivo → si se aprobó, entregar con foto.
+
+**Si alguien reclama un objeto que ya se entregó:** se registra la reclamación y su descripción como siempre. La comparación muestra a quién se entregó y qué describió esa persona. Si el encargado concluye que el objeto es de quien reclama ahora, registra un incidente en esa entrega (`POST /entregas/{id}/incidente`) con esta persona como dueño real, y cierra la reclamación como `RECHAZADA` explicando el motivo. Ese rechazo no cuenta para la alerta de la persona.
 
 En `backend/peticiones/` hay peticiones de prueba listas para la extensión REST Client de VS Code.
 
