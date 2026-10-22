@@ -13,6 +13,9 @@ dist/
 # Variables de entorno (nunca subir)
 .env
 
+# Fotos subidas al sistema (objetos y entregas)
+uploads/
+
 # Base de datos local
 *.db
 *.sqlite3

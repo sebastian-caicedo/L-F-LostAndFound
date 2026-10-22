@@ -1,6 +1,6 @@
 # L&F — Lost And Found
 
-Sistema web para la **gestión de objetos perdidos y encontrados en una institución universitaria**. El encargado registra estudiantes y objetos, gestiona reclamaciones, compara la información del reclamante con las características del objeto y decide si aprueba o rechaza. Cada decisión y cada entrega quedan registradas con trazabilidad completa.
+Sistema web para la **gestión de objetos perdidos y encontrados en una institución universitaria**. El encargado registra estudiantes, docentes y objetos (con foto), gestiona reclamaciones, compara la información del reclamante con las características del objeto y decide si aprueba o rechaza. Cada decisión y cada entrega quedan registradas con trazabilidad completa.
 
 **Estado:** MVP en desarrollo (Fase 3 — backend) · **Inicio:** 24/08/2026 · **Metodología:** Scrum con tablero Kanban
 
@@ -10,30 +10,34 @@ Sin un mecanismo centralizado, nadie sabe con certeza qué objetos fueron encont
 
 ## Usuario
 
-El **encargado de objetos perdidos** es el único usuario de la aplicación. El estudiante no la usa directamente: el encargado registra sus datos cuando reporta una pérdida o reclama un objeto.
+El **encargado de objetos perdidos** es el único usuario de la aplicación. Estudiantes y docentes no la usan directamente: el encargado registra sus datos cuando reportan una pérdida o reclaman un objeto en persona.
 
 La decisión sobre cada reclamación es siempre del encargado. El sistema solo facilita la comparación entre el objeto y la información del reclamante.
 
 ## Flujo principal (MVP)
 
 ```text
-Iniciar sesión → Registrar estudiante → Registrar objeto (perdido / encontrado)
+Iniciar sesión → Registrar persona (estudiante o docente) → Registrar objeto (perdido / encontrado)
 → Registrar reclamación y características del reclamante → Revisar y comparar
-→ Aprobar o rechazar (motivo obligatorio) → Registrar entrega → Historial
+→ Aprobar o rechazar (motivo obligatorio) → Registrar entrega con foto → Historial
 ```
 
 ### Reglas de negocio
 
 - Aprobar o rechazar una reclamación exige un **motivo obligatorio**. El sistema registra automáticamente el **encargado responsable** y la **fecha y hora** de la decisión.
 - La **entrega** solo se registra para reclamaciones **aprobadas** y actualiza el estado del objeto.
-- Toda reclamación se asocia a un estudiante y a un objeto existentes.
+- Toda reclamación se asocia a una persona (estudiante o docente) y a un objeto existentes.
+- El código estudiantil se guarda siempre con el formato de la universidad, `T` + 8 dígitos. El encargado puede escribir `t70496` y se guarda `T00070496`.
+- La foto de un objeto encontrado no se muestra en una reclamación hasta registrar la descripción del reclamante.
+- Si una entrega resulta fraudulenta, el objeto sigue `ENTREGADO` y se registra un incidente con cómo ocurrió y qué medida se propone.
+- Una persona con **3 o más reclamaciones rechazadas** de objetos distintos genera una alerta para el encargado. La alerta no bloquea: la decisión sigue siendo del encargado.
 
 ## Requerimientos funcionales
 
 | ID | Requerimiento | Prioridad |
 |---|---|---|
 | RF01 | Autenticar al encargado con sus credenciales | Alta |
-| RF02 | Registrar los datos del estudiante relacionado con un proceso | Alta |
+| RF02 | Registrar los datos del estudiante relacionado con un proceso (nombre, código, carrera, correo y teléfono) | Alta |
 | RF03 | Registrar objetos perdidos y sus características | Alta |
 | RF04 | Registrar objetos encontrados y sus características | Alta |
 | RF05 | Consultar los objetos registrados | Alta |
@@ -51,13 +55,27 @@ Iniciar sesión → Registrar estudiante → Registrar objeto (perdido / encontr
 | RF17 | Consultar el historial de reclamaciones y decisiones | Media |
 | RF18 | Consultar el historial de entregas | Media |
 
+### Ajuste de alcance (octubre de 2026)
+
+Durante la Fase 3 el equipo amplió el alcance con estos requerimientos. Deben reflejarse también en el documento del Proyecto de Aula y en los diagramas UML.
+
+| ID | Requerimiento | Prioridad |
+|---|---|---|
+| RF19 | Registrar docentes como personas que reportan o reclaman objetos (nombre, correo institucional y teléfono) | Media |
+| RF20 | Registrar y consultar la foto de un objeto | Media |
+| RF21 | Ocultar la foto del objeto en una reclamación hasta registrar la descripción del reclamante | Media |
+| RF22 | Registrar en la entrega una foto de la persona junto al objeto | Alta |
+| RF23 | Registrar incidentes de entregas fraudulentas: cómo ocurrió, medida de mejora y dueño real | Media |
+| RF24 | Alertar al encargado cuando una persona tiene 3 o más reclamaciones rechazadas de objetos distintos | Baja |
+| RF25 | Editar los datos de un objeto no entregado, registrando quién y cuándo lo editó | Media |
+
 ## Requerimientos no funcionales
 
 | ID | Atributo | Criterio |
 |---|---|---|
 | RNF-01 | Seguridad | Toda funcionalidad protegida rechaza a usuarios no autenticados |
 | RNF-02 | Autorización | Las funciones del encargado rechazan a cualquier otro rol |
-| RNF-03 | Integridad | Toda reclamación se asocia a un estudiante y a un objeto existentes |
+| RNF-03 | Integridad | Toda reclamación se asocia a una persona y a un objeto existentes |
 | RNF-04 | Validación | Los campos obligatorios se validan antes de guardar |
 | RNF-05 | Trazabilidad | Toda decisión guarda encargado, fecha, estado y motivo |
 | RNF-06 | Usabilidad | Registrar un objeto perdido toma como máximo 3 minutos en pruebas |
@@ -94,10 +112,14 @@ L-F-LostAndFound/
 │   │   ├── models.py        # Tablas de la base de datos (SQLAlchemy)
 │   │   ├── security.py      # Hash de contraseñas y tokens de sesión
 │   │   ├── deps.py          # Dependencias comunes: sesión de BD y encargado autenticado
+│   │   ├── errores.py       # Errores de negocio (404, 409, 422) con mensajes en español
+│   │   ├── validaciones.py  # Normalización de código, correo, teléfono y fechas
+│   │   ├── fotos.py         # Guardado y validación de fotos
 │   │   ├── schemas/         # Datos que entran y salen de la API (Pydantic)
 │   │   ├── services/        # Reglas de negocio
 │   │   └── routers/         # Endpoints HTTP, uno por módulo
 │   ├── peticiones/          # Peticiones de prueba (extensión REST Client)
+│   ├── uploads/             # Fotos de objetos y entregas (no se sube al repositorio)
 │   ├── seed.py              # Crea la base y carga datos de prueba
 │   ├── verificar_bd.py      # Verifica relaciones y restricciones de la base
 │   └── requirements.txt     # Dependencias de Python
@@ -160,7 +182,7 @@ python seed.py          # Crea las tablas y carga datos de prueba (borra los dat
 python verificar_bd.py  # Comprueba relaciones y que se rechacen datos inválidos
 ```
 
-Se crea el archivo `backend/lf.db`, que no se sube al repositorio. El usuario de prueba es `encargado`, con la contraseña definida en `SEED_ENCARGADO_PASSWORD`. El diseño del modelo está en [`docs/modelo-datos.md`](docs/modelo-datos.md).
+Se crean el archivo `backend/lf.db` y la carpeta `backend/uploads/` con fotos de prueba; ninguno de los dos se sube al repositorio. El usuario de prueba es `encargado`, con la contraseña definida en `SEED_ENCARGADO_PASSWORD`. El diseño del modelo está en [`docs/modelo-datos.md`](docs/modelo-datos.md).
 
 ### 4. Frontend (Astro)
 
@@ -183,12 +205,26 @@ Todos los endpoints, excepto `/health` y `/auth/login`, requieren el token de se
 | GET | `/health` | Estado de la API | — |
 | POST | `/auth/login` | Inicia sesión y devuelve el token | RF01 |
 | GET | `/auth/me` | Datos del encargado con la sesión abierta | RF01 |
+| POST | `/personas/estudiantes` | Registra un estudiante | RF02 |
+| POST | `/personas/docentes` | Registra un docente | RF19 |
+| GET | `/personas` | Lista personas; filtros `tipo` y `buscar` (nombre, código o correo) | RF02, RF19 |
+| GET | `/personas/codigo/{codigo}` | Busca un estudiante por código | RF02 |
+| GET | `/personas/{id}` | Datos de una persona | RF02, RF19 |
+| POST | `/objetos/perdidos` | Registra un objeto perdido | RF03 |
+| POST | `/objetos/encontrados` | Registra un objeto encontrado | RF04 |
+| GET | `/objetos` | Consulta objetos; filtros `tipo_registro`, `estado`, `tipo` y `buscar` | RF05 |
+| GET | `/objetos/{id}` | Detalle de un objeto | RF05 |
+| PATCH | `/objetos/{id}` | Corrige datos de un objeto no entregado | RF25 |
+| PUT | `/objetos/{id}/foto` | Sube o reemplaza la foto de un objeto (JPG, PNG o WEBP, máx. 5 MB) | RF20 |
+| GET | `/objetos/{id}/foto` | Muestra la foto de un objeto | RF20 |
+
+Las fotos no son públicas: solo se ven con sesión iniciada. La lista de objetos no muestra las características, que solo aparecen en el detalle.
 
 En `backend/peticiones/` hay peticiones de prueba listas para la extensión REST Client de VS Code.
 
 ## Datos de prueba
 
-La base de datos **no es la de la universidad**. Todos los datos que usa el sistema son de prueba, creados por el equipo con `backend/seed.py`. No se almacenan datos reales de personas.
+La base de datos **no es la de la universidad**. Todos los datos que usa el sistema son de prueba, creados por el equipo con `backend/seed.py`. No se almacenan datos reales de personas: los correos usan el dominio reservado `example.com` y las fotos de prueba son imágenes de un solo color.
 
 ## Pruebas
 
@@ -216,6 +252,7 @@ En [`docs/`](docs/) se encuentran:
 - La hoja de ruta del proyecto.
 - El modelo de datos en [`docs/modelo-datos.md`](docs/modelo-datos.md): diagrama entidad-relación, estados y reglas de integridad.
 - Los diagramas UML en [`docs/diagramas/`](docs/diagramas/): casos de uso, clases, secuencia, actividades, componentes y despliegue.
+- El diagrama de clases actualizado con el ajuste de alcance RF19–RF25 en [`docs/diagramas/diagrama-clases.md`](docs/diagramas/diagrama-clases.md).
 
 ## Equipo
 

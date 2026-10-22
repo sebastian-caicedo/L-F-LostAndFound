@@ -1,0 +1,76 @@
+### Peticiones de prueba del módulo de personas (RF02, RF19)
+### Requiere la extensión REST Client de VS Code y la API corriendo.
+### Primero ejecuta la petición de login (cambia la contraseña por la de tu .env).
+
+@api = http://localhost:8000
+
+# @name login
+POST {{api}}/auth/login
+Content-Type: application/x-www-form-urlencoded
+
+username=encargado&password=pon-aqui-tu-contrasena-de-prueba
+
+###
+@token = {{login.response.body.access_token}}
+
+### 1. Registrar un estudiante. El código "t70" se guarda como T00000070
+POST {{api}}/personas/estudiantes
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "nombre": "Estudiante de Prueba",
+  "codigo": "t70",
+  "carrera": "Ingeniería de Sistemas",
+  "correo": "estudiante.prueba@example.com",
+  "telefono": "300 000 0070"
+}
+
+### 2. El mismo código otra vez: debe responder 409
+POST {{api}}/personas/estudiantes
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "nombre": "Otro",
+  "codigo": "T00000070",
+  "carrera": "Psicología",
+  "correo": "otro@example.com",
+  "telefono": "3000000071"
+}
+
+### 3. Código con formato inválido: debe responder 422
+POST {{api}}/personas/estudiantes
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "nombre": "Otro",
+  "codigo": "A123",
+  "carrera": "Psicología",
+  "correo": "otro2@example.com",
+  "telefono": "3000000072"
+}
+
+### 4. Registrar un docente (sin código ni carrera)
+POST {{api}}/personas/docentes
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "nombre": "Docente de Prueba",
+  "correo": "docente.prueba@example.com",
+  "telefono": "3000000080"
+}
+
+### 5. Listar solo docentes
+GET {{api}}/personas?tipo=DOCENTE
+Authorization: Bearer {{token}}
+
+### 6. Buscar por nombre, código o correo
+GET {{api}}/personas?buscar=pedro
+Authorization: Bearer {{token}}
+
+### 7. Buscar un estudiante por código (acepta t4 o T00000004)
+GET {{api}}/personas/codigo/t4
+Authorization: Bearer {{token}}

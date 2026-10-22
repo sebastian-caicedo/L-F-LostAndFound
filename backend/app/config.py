@@ -9,6 +9,7 @@ Las variables disponibles están documentadas en .env.example.
 """
 
 import os
+from pathlib import Path
 
 from dotenv import load_dotenv
 
@@ -30,6 +31,13 @@ HORAS_EXPIRACION_TOKEN: int = int(os.getenv("TOKEN_EXPIRE_HOURS", "8"))
 
 # Dirección del frontend (Astro) que tiene permiso para llamar a la API (CORS).
 FRONTEND_ORIGIN: str = os.getenv("FRONTEND_ORIGIN", "http://localhost:4321")
+
+# Carpeta donde se guardan las fotos de objetos y de entregas (RF20, RF22).
+# Por defecto backend/uploads. No se sube al repositorio (.gitignore).
+UPLOADS_DIR: Path = Path(os.getenv("UPLOADS_DIR", Path(__file__).resolve().parent.parent / "uploads"))
+
+# Tamaño máximo de cada foto, en megabytes.
+FOTO_MAX_MB: int = int(os.getenv("FOTO_MAX_MB", "5"))
 
 
 def validar_configuracion() -> None:

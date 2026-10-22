@@ -1,0 +1,73 @@
+### Peticiones de prueba del módulo de objetos (RF03, RF04, RF05, RF20, RF25)
+### Requiere la extensión REST Client de VS Code y la API corriendo.
+### Primero ejecuta la petición de login (cambia la contraseña por la de tu .env).
+
+@api = http://localhost:8000
+
+# @name login
+POST {{api}}/auth/login
+Content-Type: application/x-www-form-urlencoded
+
+username=encargado&password=pon-aqui-tu-contrasena-de-prueba
+
+###
+@token = {{login.response.body.access_token}}
+
+### 1. Registrar un objeto perdido (persona 1 = Ana, de los datos de prueba)
+POST {{api}}/objetos/perdidos
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "persona_id": 1,
+  "tipo": "Llaves",
+  "descripcion": "Llavero con tres llaves",
+  "caracteristicas": "Llavero de un delfín azul y un destapador"
+}
+
+### 2. Registrar un objeto encontrado
+# @name encontrado
+POST {{api}}/objetos/encontrados
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "tipo": "Gafas",
+  "descripcion": "Gafas de sol",
+  "caracteristicas": "Marco negro, lente izquierdo rayado",
+  "lugar_encontrado": "Cancha de fútbol"
+}
+
+### 3. Consultar objetos encontrados que siguen disponibles
+GET {{api}}/objetos?tipo_registro=ENCONTRADO&estado=DISPONIBLE
+Authorization: Bearer {{token}}
+
+### 4. Buscar por texto en la descripción
+GET {{api}}/objetos?buscar=cuero
+Authorization: Bearer {{token}}
+
+### 5. Detalle del objeto registrado en la petición 2
+GET {{api}}/objetos/{{encontrado.response.body.id}}
+Authorization: Bearer {{token}}
+
+### 6. Corregir un dato (RF25): queda registrado quién y cuándo
+PATCH {{api}}/objetos/{{encontrado.response.body.id}}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "lugar_encontrado": "Cancha de fútbol, tribuna norte"
+}
+
+### 7. Intentar editar un objeto ya entregado (id 4 = billetera): debe responder 409
+PATCH {{api}}/objetos/4
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "descripcion": "Cambio no permitido"
+}
+
+### Las fotos (RF20) se prueban más fácil en http://localhost:8000/docs:
+### PUT /objetos/{id}/foto tiene un botón para elegir el archivo, y
+### GET /objetos/{id}/foto muestra la imagen.
