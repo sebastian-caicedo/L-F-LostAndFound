@@ -17,9 +17,9 @@ from app import fotos
 from app.deps import DbSession, EncargadoActual, get_encargado_actual
 from app.models import EstadoReclamacion
 from app.schemas.comunes import TextoOpcional
+from app.schemas.comparacion import ComparacionOut
 from app.schemas.entregas import EntregaOut
 from app.schemas.reclamaciones import (
-    ComparacionOut,
     DecisionCrear,
     InformacionCrear,
     ReclamacionCrear,
@@ -38,8 +38,9 @@ router = APIRouter(
 def registrar_reclamacion(datos: ReclamacionCrear, db: DbSession, encargado: EncargadoActual):
     """
     Registra una reclamación presencial (RF06). Queda PENDIENTE.
-    Solo se reclaman objetos encontrados y disponibles. La respuesta trae la
-    alerta de intentos fallidos de la persona (RF24).
+    Solo se reclaman objetos encontrados. Si el objeto ya se entregó, la
+    reclamación se registra para comparar con quien se lo llevó (RF26), pero no
+    se podrá aprobar. La respuesta trae la alerta de la persona (RF24).
     """
     reclamacion = reclamaciones_service.registrar(db, datos, encargado)
     return reclamaciones_service.con_alerta(db, reclamacion)
@@ -76,6 +77,9 @@ def comparar(reclamacion_id: int, db: DbSession):
     Muestra el objeto y la descripción del reclamante lado a lado (RF09).
     Responde 409 si todavía no se registró la descripción: la foto y las
     características del objeto no se muestran antes (RF21).
+
+    Si el objeto ya se entregó a otra persona, muestra esa entrega (a quién,
+    cuándo y qué describió) para evaluar un posible fraude (RF26).
     """
     return reclamaciones_service.comparacion(db, reclamacion_id)
 

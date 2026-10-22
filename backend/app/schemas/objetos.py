@@ -132,3 +132,15 @@ class ObjetoDetalle(ObjetoBase):
     encargado: EncargadoOut
     encargado_modificacion: EncargadoOut | None
     fecha_modificacion: datetime | None
+
+
+class ObjetoMini(BaseModel):
+    """Datos mínimos del objeto dentro de una reclamación (sin características)."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    tipo_registro: TipoRegistro
+    tipo: str
+    descripcion: str
+    estado: EstadoObjeto

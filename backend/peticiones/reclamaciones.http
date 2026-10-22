@@ -70,7 +70,8 @@ Content-Type: application/json
   "motivo": "Describió el nombre raspado y la pila de repuesto, que no se ven desde afuera"
 }
 
-### 8. Pedro (persona 4, con alerta RF24) intenta reclamar la misma calculadora: 409
+### 8. Pedro (persona 4, con alerta RF24) intenta reclamar la misma calculadora antes de
+### que se entregue: 409 (la aprobación de Ana está pendiente de entrega)
 POST {{api}}/reclamaciones
 Authorization: Bearer {{token}}
 Content-Type: application/json
@@ -109,3 +110,38 @@ Content-Type: application/json
   "medida_mejora": "Pedir también el contenido exacto de la billetera",
   "propietario_real_id": 3
 }
+
+### --- Posible fraude (RF26) ---
+### Después de ENTREGAR la calculadora a Ana en /docs, Pedro la reclama:
+
+### 14. Pedro reclama la calculadora ya entregada: se permite, para comparar
+# @name reclamacionPedro
+POST {{api}}/reclamaciones
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "persona_id": 4,
+  "objeto_id": 7
+}
+
+###
+@rpedro = {{reclamacionPedro.response.body.id}}
+
+### 15. Lo que describe Pedro
+POST {{api}}/reclamaciones/{{rpedro}}/informacion
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "caracteristicas": "Calculadora científica, raspé mi nombre de la tapa y guardo una pila de repuesto"
+}
+
+### 16. La comparación muestra "entrega_previa": a quién se entregó y qué describió
+GET {{api}}/reclamaciones/{{rpedro}}/comparacion
+Authorization: Bearer {{token}}
+
+### 17. Coincidencias del reporte de pérdida del docente (objeto 8: sombrilla)
+GET {{api}}/objetos/8/coincidencias
+Authorization: Bearer {{token}}
+

@@ -9,16 +9,36 @@ Así la alerta siempre está al día y no hay que sincronizar nada.
 
 Se cuentan objetos DISTINTOS porque reclamar varias veces el mismo objeto
 puede ser un dueño insistente; intentar con muchos objetos diferentes es lo
-que hace sospechar. La alerta solo informa: la decisión sigue siendo del
+que hace sospechar.
+
+No cuenta el rechazo de un objeto del que después se comprobó que la persona
+era el dueño real (un incidente la registra como propietario_real): ese
+rechazo no fue un intento falso, sino una víctima del fraude. La alerta solo informa: la decisión sigue siendo del
 encargado (la decisión automática está fuera del alcance).
 """
 
-from sqlalchemy import distinct, func, select
-from sqlalchemy.orm import Session
+from sqlalchemy import and_, distinct, exists, func, select
+from sqlalchemy.orm import Session, aliased
 
 from app import config
-from app.models import EstadoReclamacion, Persona, Reclamacion
+from app.models import Entrega, EstadoReclamacion, Incidente, Persona, Reclamacion
 from app.schemas.alertas import AlertaOut
+
+
+def _reconocido_como_dueno():
+    """
+    Condición: existe un incidente sobre una entrega de este mismo objeto que
+    reconoce a esta persona como dueña real.
+    """
+    reclamacion_entregada = aliased(Reclamacion)
+    return exists().where(
+        and_(
+            Incidente.entrega_id == Entrega.id,
+            Entrega.reclamacion_id == reclamacion_entregada.id,
+            reclamacion_entregada.objeto_id == Reclamacion.objeto_id,
+            Incidente.propietario_real_id == Reclamacion.persona_id,
+        )
+    )
 
 
 def _consulta_rechazos():
@@ -28,7 +48,7 @@ def _consulta_rechazos():
             Reclamacion.persona_id,
             func.count(distinct(Reclamacion.objeto_id)).label("rechazos"),
         )
-        .where(Reclamacion.estado == EstadoReclamacion.RECHAZADA)
+        .where(Reclamacion.estado == EstadoReclamacion.RECHAZADA, ~_reconocido_como_dueno())
         .group_by(Reclamacion.persona_id)
     )
 

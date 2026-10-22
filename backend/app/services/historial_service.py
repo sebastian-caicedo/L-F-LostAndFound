@@ -20,6 +20,7 @@ from app.models import (
     Persona,
     Reclamacion,
 )
+from app.schemas.comparacion import EntregaPrevia
 from app.schemas.entregas import IncidenteCrear
 from app.schemas.reclamaciones import ReclamacionHistorial
 from app.services import alertas_service
@@ -118,3 +119,35 @@ def registrar_incidente(
 def listar_incidentes(db: Session) -> list[Incidente]:
     """Incidentes de fraude, del más reciente al más antiguo (RF23)."""
     return list(db.scalars(select(Incidente).order_by(Incidente.fecha_hora.desc(), Incidente.id.desc())))
+
+
+def entrega_previa(
+    db: Session, objeto_id: int, excluir_reclamacion_id: int | None = None
+) -> EntregaPrevia | None:
+    """
+    Si el objeto ya se entregó, devuelve a quién, cuándo, qué describió esa
+    persona y con qué motivo se aprobó (RF26). Sirve para que el encargado
+    compare a quien reclama ahora con quien se lo llevó.
+
+    excluir_reclamacion_id evita mostrarle a una reclamación su propia entrega.
+    """
+    consulta = (
+        select(Entrega)
+        .join(Reclamacion, Entrega.reclamacion_id == Reclamacion.id)
+        .where(Reclamacion.objeto_id == objeto_id)
+    )
+    if excluir_reclamacion_id is not None:
+        consulta = consulta.where(Reclamacion.id != excluir_reclamacion_id)
+    entrega = db.scalar(consulta)
+    if entrega is None:
+        return None
+    reclamacion = entrega.reclamacion
+    return EntregaPrevia(
+        entrega_id=entrega.id,
+        fecha_hora=entrega.fecha_hora,
+        entregado_por=entrega.encargado,
+        persona=reclamacion.persona,
+        descripcion_dada=reclamacion.informacion,
+        motivo_aprobacion=reclamacion.decision.motivo,
+        incidente=entrega.incidente,
+    )

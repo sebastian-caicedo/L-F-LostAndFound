@@ -73,7 +73,7 @@ def main() -> None:
         conteos = {
             "encargado": (Encargado, 1),
             "persona": (Persona, 5),
-            "objeto": (Objeto, 7),
+            "objeto": (Objeto, 8),
             "reclamacion": (Reclamacion, 7),
             "informacion_reclamante": (InformacionReclamante, 7),
             "decision": (Decision, 6),

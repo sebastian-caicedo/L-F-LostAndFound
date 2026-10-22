@@ -155,7 +155,14 @@ def main() -> None:
                                  "Tapa con el nombre raspado y una pila de repuesto en el compartimiento",
                                  date(2026, 10, 7), "Laboratorio de física")
 
-        db.add_all([cuaderno, termo, celular, billetera, audifonos, sombrilla, calculadora])
+        # El docente reporta después que perdió una sombrilla: sus coincidencias
+        # muestran la sombrilla que ya se entregó a otra persona (RF26).
+        sombrilla_perdida = perdido("Sombrilla", "Sombrilla roja",
+                                    "Roja, mango de madera y una cinta verde amarrada en la punta",
+                                    date(2026, 10, 8), carlos)
+
+        db.add_all([cuaderno, termo, celular, billetera, audifonos, sombrilla, calculadora,
+                    sombrilla_perdida])
         db.flush()
 
         # --- Reclamaciones ---
@@ -237,7 +244,7 @@ def main() -> None:
         db.commit()
 
     print("Base de datos creada y poblada con datos de prueba.")
-    print("  1 encargado (usuario: encargado), 4 estudiantes, 1 docente, 7 objetos,")
+    print("  1 encargado (usuario: encargado), 4 estudiantes, 1 docente, 8 objetos,")
     print("  7 reclamaciones (1 pendiente, 2 aprobadas, 4 rechazadas), 2 entregas, 1 incidente.")
 
 

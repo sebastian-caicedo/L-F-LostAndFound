@@ -6,12 +6,12 @@ from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, Field, computed_field
 
-from app.models import EstadoObjeto, EstadoReclamacion, ResultadoDecision, TipoRegistro
+from app.models import EstadoReclamacion, ResultadoDecision
 from app.schemas.alertas import AlertaOut
 from app.schemas.auth import EncargadoOut
 from app.schemas.comunes import TextoLargo
-from app.schemas.objetos import ObjetoBase
-from app.schemas.personas import PersonaOut, PersonaResumen
+from app.schemas.objetos import ObjetoBase, ObjetoMini
+from app.schemas.personas import PersonaResumen
 
 # ---------------------------------------------------------------------------
 # Entrada
@@ -71,18 +71,6 @@ class DecisionCrear(BaseModel):
 # ---------------------------------------------------------------------------
 # Salida
 # ---------------------------------------------------------------------------
-
-
-class ObjetoMini(BaseModel):
-    """Datos mínimos del objeto dentro de una reclamación (sin características)."""
-
-    model_config = ConfigDict(from_attributes=True)
-
-    id: int
-    tipo_registro: TipoRegistro
-    tipo: str
-    descripcion: str
-    estado: EstadoObjeto
 
 
 class InformacionOut(BaseModel):
@@ -148,20 +136,3 @@ class ObjetoComparacion(ObjetoBase):
     """
 
     caracteristicas: str
-
-
-class ComparacionOut(BaseModel):
-    """
-    Objeto y reclamante lado a lado (RF09, HCU08): lo registrado del objeto
-    frente a lo que describió la persona, con la alerta de intentos fallidos.
-    """
-
-    reclamacion_id: int
-    estado: EstadoReclamacion
-    fecha_creacion: datetime
-    persona: PersonaOut
-    alerta: AlertaOut
-    descripcion_reclamante: InformacionOut
-    objeto: ObjetoComparacion
-    decision: DecisionOut | None
-

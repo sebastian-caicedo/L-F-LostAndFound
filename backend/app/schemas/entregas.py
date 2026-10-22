@@ -6,8 +6,8 @@ from pydantic import BaseModel, ConfigDict, Field, computed_field
 
 from app.schemas.auth import EncargadoOut
 from app.schemas.comunes import TextoLargo
+from app.schemas.objetos import ObjetoMini
 from app.schemas.personas import PersonaResumen
-from app.schemas.reclamaciones import ObjetoMini
 
 
 class ReclamacionDeEntrega(BaseModel):

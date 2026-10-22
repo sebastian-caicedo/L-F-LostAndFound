@@ -1,4 +1,4 @@
-"""Reglas de negocio del módulo de objetos (RF03, RF04, RF05, RF20, RF25)."""
+"""Reglas de negocio del módulo de objetos (RF03, RF04, RF05, RF20, RF25, RF26)."""
 
 from datetime import date
 from pathlib import Path
@@ -9,7 +9,10 @@ from sqlalchemy.orm import Session
 from app import fotos
 from app.errores import AccionNoPermitida, DatoInvalido, NoEncontrado
 from app.models import Encargado, EstadoObjeto, Objeto, Persona, TipoRegistro, ahora
+from app.schemas.comparacion import Coincidencia
 from app.schemas.objetos import ObjetoEditar, ObjetoEncontradoCrear, ObjetoPerdidoCrear
+from app.schemas.reclamaciones import ObjetoComparacion
+from app.services import historial_service
 
 # Campos que solo aplican a un tipo de registro.
 _SOLO_PERDIDO = {"fecha_reporte"}
@@ -161,3 +164,45 @@ def ruta_foto(db: Session, objeto_id: int) -> Path:
     if not ruta.is_file():
         raise NoEncontrado("No se encontró el archivo de la foto en el servidor.")
     return ruta
+
+
+def _misma_categoria(a: str, b: str) -> bool:
+    """
+    Compara categorías sin importar mayúsculas: "Calculadora" coincide con
+    "calculadora científica" porque una contiene a la otra.
+    """
+    a, b = a.strip().lower(), b.strip().lower()
+    return a in b or b in a
+
+
+def coincidencias(db: Session, objeto_id: int) -> list[Coincidencia]:
+    """
+    Posibles coincidencias de un objeto reportado como perdido (RF05, HCU05, RF26).
+
+    Muestra los objetos ENCONTRADOS de la misma categoría, primero los que siguen
+    disponibles y luego los ya entregados, cada uno con su entrega (a quién, cuándo
+    y qué describió esa persona). La comparación la hace el encargado: el sistema
+    no decide si es el mismo objeto.
+
+    Como el reporte de pérdida ya tiene la descripción de la persona, mostrar
+    aquí las características y la foto no rompe la verificación a ciegas (RF21).
+    """
+    perdido = obtener(db, objeto_id)
+    if perdido.tipo_registro != TipoRegistro.PERDIDO:
+        raise DatoInvalido("Las coincidencias se buscan para objetos reportados como perdidos.")
+
+    encontrados = db.scalars(
+        select(Objeto)
+        .where(Objeto.tipo_registro == TipoRegistro.ENCONTRADO)
+        .order_by(Objeto.fecha_registro.desc(), Objeto.id.desc())
+    )
+    candidatos = [o for o in encontrados if _misma_categoria(o.tipo, perdido.tipo)]
+    # Primero los disponibles (se pueden reclamar), luego los entregados.
+    candidatos.sort(key=lambda o: o.estado != EstadoObjeto.DISPONIBLE)
+    return [
+        Coincidencia(
+            objeto=ObjetoComparacion.model_validate(o),
+            entrega_previa=historial_service.entrega_previa(db, o.id),
+        )
+        for o in candidatos
+    ]

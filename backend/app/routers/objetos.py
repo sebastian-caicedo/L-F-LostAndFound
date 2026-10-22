@@ -11,6 +11,7 @@ from fastapi.responses import FileResponse
 from app import fotos
 from app.deps import DbSession, EncargadoActual, get_encargado_actual
 from app.models import EstadoObjeto, TipoRegistro
+from app.schemas.comparacion import Coincidencia
 from app.schemas.objetos import (
     ObjetoDetalle,
     ObjetoEditar,
@@ -69,6 +70,16 @@ def listar_objetos(
 def obtener_objeto(objeto_id: int, db: DbSession):
     """Detalle completo de un objeto (RF05)."""
     return objetos_service.obtener(db, objeto_id)
+
+
+@router.get("/{objeto_id}/coincidencias", response_model=list[Coincidencia])
+def coincidencias(objeto_id: int, db: DbSession):
+    """
+    Posibles coincidencias de un objeto reportado como perdido (RF05, RF26):
+    objetos encontrados de la misma categoría. Si alguno ya se entregó, muestra
+    a quién, cuándo y qué describió esa persona, para evaluar un posible fraude.
+    """
+    return objetos_service.coincidencias(db, objeto_id)
 
 
 @router.patch("/{objeto_id}", response_model=ObjetoDetalle)

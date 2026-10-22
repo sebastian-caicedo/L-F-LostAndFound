@@ -1,6 +1,6 @@
 """
 Reglas de negocio de reclamaciones, revisión, decisión y entrega
-(RF06–RF16, RF21, RF22, RF24).
+(RF06–RF16, RF21, RF22, RF24, RF26).
 
 Flujo presencial:
 1. La persona llega al mostrador y el encargado registra la reclamación (RF06).
@@ -8,6 +8,11 @@ Flujo presencial:
 3. Solo entonces el sistema muestra la comparación con la foto (RF09, RF21).
 4. El encargado aprueba o rechaza con un motivo (RF10–RF14).
 5. Si aprobó, entrega el objeto con una foto de evidencia (RF15, RF16, RF22).
+
+Si alguien reclama un objeto que YA se entregó a otra persona, la reclamación
+se puede registrar para comparar: el sistema muestra quién se lo llevó y qué
+describió (RF26). No se puede aprobar, porque el objeto ya no está; si se
+comprueba que era de quien reclama ahora, se registra un incidente (RF23).
 """
 
 from sqlalchemy import select
@@ -28,14 +33,14 @@ from app.models import (
     ResultadoDecision,
     TipoRegistro,
 )
+from app.schemas.comparacion import ComparacionOut
 from app.schemas.reclamaciones import (
-    ComparacionOut,
     DecisionCrear,
     InformacionCrear,
     ReclamacionCrear,
     ReclamacionOut,
 )
-from app.services import alertas_service
+from app.services import alertas_service, historial_service
 
 
 def obtener(db: Session, reclamacion_id: int) -> Reclamacion:
@@ -57,6 +62,11 @@ def _tiene_aprobada(db: Session, objeto_id: int) -> bool:
     )
 
 
+def _aprobada_sin_entregar(db: Session, objeto: Objeto) -> bool:
+    """El objeto tiene una reclamación aprobada y todavía está en la oficina."""
+    return objeto.estado == EstadoObjeto.DISPONIBLE and _tiene_aprobada(db, objeto.id)
+
+
 def con_alerta(db: Session, reclamacion: Reclamacion) -> ReclamacionOut:
     """Convierte la reclamación en respuesta y le agrega la alerta de la persona (RF24)."""
     salida = ReclamacionOut.model_validate(reclamacion)
@@ -75,8 +85,10 @@ def registrar(db: Session, datos: ReclamacionCrear, encargado: Encargado) -> Rec
 
     Reglas:
     - La persona y el objeto deben existir.
-    - Solo se reclaman objetos ENCONTRADOS y DISPONIBLES.
-    - No se reclama un objeto que ya tiene una reclamación aprobada (está por entregarse).
+    - Solo se reclaman objetos ENCONTRADOS (no reportes de pérdida).
+    - No se reclama un objeto con una reclamación aprobada que aún no se entrega.
+    - Sí se puede reclamar un objeto ya ENTREGADO: sirve para comparar con quien
+      se lo llevó y detectar un posible fraude (RF26). No se podrá aprobar.
     - Una persona no puede tener dos reclamaciones pendientes del mismo objeto.
     """
     if db.get(Persona, datos.persona_id) is None:
@@ -86,10 +98,11 @@ def registrar(db: Session, datos: ReclamacionCrear, encargado: Encargado) -> Rec
         raise DatoInvalido(f"No existe un objeto con id {datos.objeto_id}.")
     if objeto.tipo_registro != TipoRegistro.ENCONTRADO:
         raise AccionNoPermitida("Solo se pueden reclamar objetos encontrados, no reportes de pérdida.")
-    if objeto.estado == EstadoObjeto.ENTREGADO:
-        raise AccionNoPermitida("El objeto ya fue entregado y no admite nuevas reclamaciones.")
-    if _tiene_aprobada(db, objeto.id):
-        raise AccionNoPermitida("El objeto ya tiene una reclamación aprobada y está pendiente de entrega.")
+    if _aprobada_sin_entregar(db, objeto):
+        raise AccionNoPermitida(
+            "El objeto ya tiene una reclamación aprobada y está pendiente de entrega. "
+            "Entrégalo primero; después se puede registrar esta reclamación para comparar."
+        )
     duplicada = db.scalar(
         select(Reclamacion.id).where(
             Reclamacion.persona_id == datos.persona_id,
@@ -162,12 +175,27 @@ def comparacion(db: Session, reclamacion_id: int) -> ComparacionOut:
 
     Solo está disponible después de registrar la descripción del reclamante:
     antes de eso no se muestran ni la foto ni las características (RF21).
+
+    Si el objeto ya se entregó a otra persona, incluye esa entrega: a quién,
+    cuándo, qué describió y con qué motivo se aprobó (RF26).
     """
     reclamacion = obtener(db, reclamacion_id)
     if reclamacion.informacion is None:
         raise AccionNoPermitida(
             "Primero registra la descripción del reclamante. La foto y las características "
             "del objeto solo se muestran después, para que la persona no pueda copiarlas."
+        )
+    previa = historial_service.entrega_previa(
+        db, reclamacion.objeto_id, excluir_reclamacion_id=reclamacion.id
+    )
+    aviso = None
+    if previa is not None:
+        aviso = (
+            f"Este objeto ya se entregó a {previa.persona.nombre} el "
+            f"{previa.fecha_hora:%d/%m/%Y a las %H:%M}. Compara la descripción de quien "
+            "reclama ahora con la del objeto y con la que dio esa persona. Si concluyes que "
+            "el objeto es de quien reclama ahora, registra un incidente en esa entrega "
+            "indicándolo como dueño real."
         )
     return ComparacionOut(
         reclamacion_id=reclamacion.id,
@@ -178,6 +206,8 @@ def comparacion(db: Session, reclamacion_id: int) -> ComparacionOut:
         descripcion_reclamante=reclamacion.informacion,
         objeto=reclamacion.objeto,
         decision=reclamacion.decision,
+        entrega_previa=previa,
+        aviso=aviso,
     )
 
 
@@ -201,7 +231,11 @@ def decidir(db: Session, reclamacion_id: int, datos: DecisionCrear, encargado: E
         raise AccionNoPermitida("Registra la descripción del reclamante y revisa la comparación antes de decidir.")
     if datos.resultado == ResultadoDecision.APROBADA:
         if reclamacion.objeto.estado != EstadoObjeto.DISPONIBLE:
-            raise AccionNoPermitida("El objeto ya no está disponible.")
+            raise AccionNoPermitida(
+                "No se puede aprobar: el objeto ya se entregó a otra persona. Si concluyes que es "
+                "de quien reclama ahora, registra un incidente en esa entrega con esta persona "
+                "como dueño real, y luego cierra esta reclamación como RECHAZADA explicando el motivo."
+            )
         if _tiene_aprobada(db, reclamacion.objeto_id):
             raise AccionNoPermitida("El objeto ya tiene otra reclamación aprobada.")
 
