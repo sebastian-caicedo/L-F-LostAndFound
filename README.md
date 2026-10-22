@@ -2,7 +2,7 @@
 
 Sistema web para la **gestión de objetos perdidos y encontrados en una institución universitaria**. El encargado registra estudiantes, docentes y objetos (con foto), gestiona reclamaciones, compara la información del reclamante con las características del objeto y decide si aprueba o rechaza. Cada decisión y cada entrega quedan registradas con trazabilidad completa.
 
-**Estado:** MVP en desarrollo (Fase 3 — backend) · **Inicio:** 24/08/2026 · **Metodología:** Scrum con tablero Kanban
+**Estado:** MVP en desarrollo (backend completo; siguiente: Fase 4 — frontend) · **Inicio:** 24/08/2026 · **Metodología:** Scrum con tablero Kanban
 
 ## Problema que resuelve
 
@@ -132,6 +132,7 @@ L-F-LostAndFound/
 │   └── package.json
 ├── docs/                    # Documentación del proyecto
 │   ├── diagramas/           # Diagramas UML
+│   ├── avances/             # Resumen de cada fase: qué se hizo y cómo se verificó
 │   ├── modelo-datos.md      # Diseño de la base de datos
 │   └── ...                  # Proyecto de Aula y hoja de ruta
 ├── .env.example             # Plantilla de variables de entorno (sin valores reales)
@@ -257,13 +258,13 @@ Pendiente (Fase 6 de la hoja de ruta). Las pruebas cubrirán autenticación y pe
 |---|---|---|
 | 1 | Repositorio y entorno de desarrollo | Completada |
 | 2 | Diseño de la base de datos | Completada |
-| 3 | Backend | En curso |
+| 3 | Backend | Completada |
 | 4 | Frontend | Pendiente |
 | 5 | Integración | Pendiente |
 | 6 | Calidad y pruebas | Pendiente |
 | 7 | Documentación y entrega | Pendiente |
 
-El detalle de cada fase está en la hoja de ruta dentro de [`docs/`](docs/).
+El detalle de cada fase está en la hoja de ruta dentro de [`docs/`](docs/). El resumen de lo hecho en cada fase está en [`docs/avances/`](docs/avances/).
 
 ## Documentación
 
@@ -273,7 +274,8 @@ En [`docs/`](docs/) se encuentran:
 - La hoja de ruta del proyecto.
 - El modelo de datos en [`docs/modelo-datos.md`](docs/modelo-datos.md): diagrama entidad-relación, estados y reglas de integridad.
 - Los diagramas UML en [`docs/diagramas/`](docs/diagramas/): casos de uso, clases, secuencia, actividades, componentes y despliegue.
-- El diagrama de clases actualizado con el ajuste de alcance RF19–RF25 en [`docs/diagramas/diagrama-clases.md`](docs/diagramas/diagrama-clases.md).
+- El diagrama de clases actualizado con el ajuste de alcance RF19–RF26 en [`docs/diagramas/diagrama-clases.md`](docs/diagramas/diagrama-clases.md).
+- Los avances de cada fase en [`docs/avances/`](docs/avances/): qué se hizo, decisiones tomadas, trazabilidad de requerimientos y verificación ([Fase 3](docs/avances/fase3.md)).
 
 ## Equipo
 

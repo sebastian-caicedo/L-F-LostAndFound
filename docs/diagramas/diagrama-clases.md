@@ -1,6 +1,6 @@
 # Diagrama de clases — L&F
 
-Versión actualizada del diagrama de clases (Figura 2 del documento de modelado UML). Incorpora el ajuste de alcance RF19–RF25 de la Fase 3 y coincide con la implementación en [`backend/app/models.py`](../../backend/app/models.py).
+Versión actualizada del diagrama de clases (Figura 2 del documento de modelado UML). Incorpora el ajuste de alcance RF19–RF26 de la Fase 3 (el RF26 no agrega clases: usa la entrega, la reclamación y el incidente que ya existen) y coincide con la implementación en [`backend/app/models.py`](../../backend/app/models.py).
 
 ![Diagrama de clases de L&F](diagrama-clases.png)
 
