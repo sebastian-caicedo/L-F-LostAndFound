@@ -1,0 +1,111 @@
+### Flujo completo en el mostrador: reclamación -> descripción -> comparación
+### -> decisión -> entrega -> historial (RF06–RF18, RF21–RF24)
+### Requiere la extensión REST Client de VS Code y la API corriendo.
+### Ejecuta las peticiones EN ORDEN, después de un python seed.py recién hecho.
+
+@api = http://localhost:8000
+
+# @name login
+POST {{api}}/auth/login
+Content-Type: application/x-www-form-urlencoded
+
+username=encargado&password=pon-aqui-tu-contrasena-de-prueba
+
+###
+@token = {{login.response.body.access_token}}
+
+### 1. Reclamaciones pendientes (RF08)
+GET {{api}}/reclamaciones
+Authorization: Bearer {{token}}
+
+### 2. Ana (persona 1) reclama la calculadora (objeto 7)
+# @name reclamacion
+POST {{api}}/reclamaciones
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "persona_id": 1,
+  "objeto_id": 7
+}
+
+###
+@rid = {{reclamacion.response.body.id}}
+
+### 3. Comparar ANTES de la descripción: debe responder 409 (RF21)
+GET {{api}}/reclamaciones/{{rid}}/comparacion
+Authorization: Bearer {{token}}
+
+### 4. Lo que Ana describe sin ver el objeto (RF07)
+POST {{api}}/reclamaciones/{{rid}}/informacion
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "caracteristicas": "Calculadora científica con el nombre raspado en la tapa y una pila de repuesto",
+  "observaciones": "Dice que la dejó en el laboratorio de física"
+}
+
+### 5. Ahora sí: objeto y descripción lado a lado (RF09)
+GET {{api}}/reclamaciones/{{rid}}/comparacion
+Authorization: Bearer {{token}}
+
+### 6. Aprobar sin motivo: debe responder 422 (RF12)
+POST {{api}}/reclamaciones/{{rid}}/decision
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "resultado": "APROBADA",
+  "motivo": "   "
+}
+
+### 7. Aprobar con motivo (RF10, RF13, RF14)
+POST {{api}}/reclamaciones/{{rid}}/decision
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "resultado": "APROBADA",
+  "motivo": "Describió el nombre raspado y la pila de repuesto, que no se ven desde afuera"
+}
+
+### 8. Pedro (persona 4, con alerta RF24) intenta reclamar la misma calculadora: 409
+POST {{api}}/reclamaciones
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "persona_id": 4,
+  "objeto_id": 7
+}
+
+### La ENTREGA (RF15, RF22) se prueba en http://localhost:8000/docs:
+### POST /reclamaciones/{id}/entrega tiene el botón para elegir la foto.
+
+### 9. Personas con alerta de intentos fallidos (RF24)
+GET {{api}}/personas/alertas
+Authorization: Bearer {{token}}
+
+### 10. Historial de reclamaciones de Pedro (RF17)
+GET {{api}}/historial/reclamaciones?persona_id=4
+Authorization: Bearer {{token}}
+
+### 11. ¿Quién se llevó la sombrilla (objeto 6)? (RF18)
+GET {{api}}/historial/entregas?objeto_id=6
+Authorization: Bearer {{token}}
+
+### 12. Incidentes de fraude registrados (RF23)
+GET {{api}}/historial/incidentes
+Authorization: Bearer {{token}}
+
+### 13. Registrar un incidente sobre la entrega de la billetera (entrega 1)
+POST {{api}}/entregas/1/incidente
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "como_lo_obtuvo": "Describió la billetera con datos que le contó el dueño real",
+  "medida_mejora": "Pedir también el contenido exacto de la billetera",
+  "propietario_real_id": 3
+}

@@ -10,8 +10,9 @@ from fastapi import APIRouter, Depends, status
 
 from app.deps import DbSession, get_encargado_actual
 from app.models import TipoPersona
+from app.schemas.alertas import PersonaConAlerta
 from app.schemas.personas import DocenteCrear, EstudianteCrear, PersonaOut
-from app.services import personas_service
+from app.services import alertas_service, personas_service
 
 router = APIRouter(
     prefix="/personas",
@@ -45,6 +46,18 @@ def listar_personas(db: DbSession, tipo: TipoPersona | None = None, buscar: str 
     - buscar: texto contenido en el nombre, el código o el correo.
     """
     return personas_service.listar(db, tipo, buscar)
+
+
+@router.get("/alertas", response_model=list[PersonaConAlerta])
+def personas_con_alerta(db: DbSession):
+    """
+    Personas con 3 o más reclamaciones rechazadas de objetos distintos (RF24),
+    de más a menos rechazos. Solo informa: la decisión sigue siendo del encargado.
+    """
+    return [
+        PersonaConAlerta(persona=persona, alerta=alertas_service.construir_alerta(total))
+        for persona, total in alertas_service.personas_con_alerta(db)
+    ]
 
 
 @router.get("/codigo/{codigo}", response_model=PersonaOut)

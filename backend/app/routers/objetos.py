@@ -8,9 +8,8 @@ eliminarlos rompería el historial de reclamaciones y entregas.
 from fastapi import APIRouter, Depends, UploadFile, status
 from fastapi.responses import FileResponse
 
-from app import config
+from app import fotos
 from app.deps import DbSession, EncargadoActual, get_encargado_actual
-from app.errores import DatoInvalido
 from app.models import EstadoObjeto, TipoRegistro
 from app.schemas.objetos import (
     ObjetoDetalle,
@@ -88,11 +87,7 @@ def subir_foto(objeto_id: int, foto: UploadFile, db: DbSession, encargado: Encar
     Agrega o reemplaza la foto de un objeto (RF20).
     Formatos: JPG, PNG o WEBP. Tamaño máximo: 5 MB (FOTO_MAX_MB).
     """
-    limite = config.FOTO_MAX_MB * 1024 * 1024
-    # Se lee un byte más del límite: si llega a leerse, la foto es demasiado grande.
-    contenido = foto.file.read(limite + 1)
-    if len(contenido) > limite:
-        raise DatoInvalido(f"La foto supera el tamaño máximo de {config.FOTO_MAX_MB} MB.")
+    contenido = fotos.leer_subida(foto.file)
     return objetos_service.guardar_foto(db, objeto_id, contenido, encargado)
 
 

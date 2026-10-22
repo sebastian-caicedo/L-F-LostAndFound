@@ -15,7 +15,7 @@ from sqlalchemy.exc import IntegrityError
 
 from app import config
 from app.errores import ErrorNegocio
-from app.routers import auth, objetos, personas
+from app.routers import auth, entregas, historial, objetos, personas, reclamaciones
 
 # Si falta la SECRET_KEY, la API no arranca y muestra cómo generarla.
 config.validar_configuracion()
@@ -36,6 +36,9 @@ app.add_middleware(
 app.include_router(auth.router)
 app.include_router(personas.router)
 app.include_router(objetos.router)
+app.include_router(reclamaciones.router)
+app.include_router(entregas.router)
+app.include_router(historial.router)
 
 
 @app.exception_handler(ErrorNegocio)

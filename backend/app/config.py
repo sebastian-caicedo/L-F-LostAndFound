@@ -39,6 +39,10 @@ UPLOADS_DIR: Path = Path(os.getenv("UPLOADS_DIR", Path(__file__).resolve().paren
 # Tamaño máximo de cada foto, en megabytes.
 FOTO_MAX_MB: int = int(os.getenv("FOTO_MAX_MB", "5"))
 
+# Cantidad de reclamaciones rechazadas (de objetos distintos) a partir de la
+# cual el sistema alerta al encargado sobre una persona (RF24).
+UMBRAL_ALERTA_RECHAZOS: int = int(os.getenv("UMBRAL_ALERTA_RECHAZOS", "3"))
+
 
 def validar_configuracion() -> None:
     """

@@ -12,6 +12,7 @@ nadie sin sesión puede ver cómo es un objeto encontrado.
 
 import uuid
 from pathlib import Path
+from typing import BinaryIO
 
 from app import config
 from app.errores import DatoInvalido
@@ -37,6 +38,19 @@ def _detectar_formato(contenido: bytes) -> str | None:
     if contenido[:4] == b"RIFF" and contenido[8:12] == b"WEBP":
         return "webp"
     return None
+
+
+def leer_subida(archivo: BinaryIO) -> bytes:
+    """
+    Lee un archivo subido sin pasar del tamaño máximo. Se lee un byte más del
+    límite: si llega a leerse, la foto es demasiado grande y se rechaza sin
+    cargar el resto en memoria.
+    """
+    limite = config.FOTO_MAX_MB * 1024 * 1024
+    contenido = archivo.read(limite + 1)
+    if len(contenido) > limite:
+        raise DatoInvalido(f"La foto supera el tamaño máximo de {config.FOTO_MAX_MB} MB.")
+    return contenido
 
 
 def guardar_foto(contenido: bytes, carpeta: str) -> str:

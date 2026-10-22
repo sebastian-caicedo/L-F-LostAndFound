@@ -86,7 +86,9 @@ class ObjetoEditar(BaseModel):
         return self
 
 
-class _ObjetoBase(BaseModel):
+class ObjetoBase(BaseModel):
+    """Campos comunes de un objeto, con el indicador y la ruta de su foto."""
+
     model_config = ConfigDict(from_attributes=True)
 
     id: int
@@ -113,7 +115,7 @@ class _ObjetoBase(BaseModel):
         return f"/objetos/{self.id}/foto" if self.foto else None
 
 
-class ObjetoResumen(_ObjetoBase):
+class ObjetoResumen(ObjetoBase):
     """
     Objeto en la lista de consulta (RF05).
 
@@ -122,7 +124,7 @@ class ObjetoResumen(_ObjetoBase):
     """
 
 
-class ObjetoDetalle(_ObjetoBase):
+class ObjetoDetalle(ObjetoBase):
     """Todos los datos de un objeto, con quién lo reportó, registró y editó."""
 
     caracteristicas: str
