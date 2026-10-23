@@ -1,6 +1,6 @@
 # Modelo de datos — L&F
 
-Diseño de la base de datos SQLite del sistema. Se implementa con SQLAlchemy en [`backend/app/models.py`](../backend/app/models.py) y parte del diagrama de clases corregido ([`docs/diagramas/`](diagramas/)), con los ajustes de alcance RF19–RF26 de la Fase 3.
+Diseño de la base de datos SQLite del sistema. Se implementa con SQLAlchemy en [`backend/app/models.py`](../backend/app/models.py) y parte del diagrama de clases corregido ([`docs/diagramas/`](diagramas/)), con los ajustes de alcance RF19–RF29 de la Fase 3.
 
 ## Diagrama entidad-relación
 
@@ -9,6 +9,7 @@ erDiagram
   PERSONA ||--o{ OBJETO : "reporta (perdido)"
   PERSONA ||--o{ RECLAMACION : realiza
   OBJETO ||--o{ RECLAMACION : "es reclamado"
+  OBJETO |o--o{ RECLAMACION : "reporte vinculado"
   ENCARGADO ||--o{ OBJETO : "registra / edita"
   ENCARGADO ||--o{ RECLAMACION : gestiona
   RECLAMACION ||--o| INFORMACION_RECLAMANTE : contiene
@@ -43,7 +44,7 @@ erDiagram
     string tipo
     string descripcion
     string caracteristicas
-    string estado "PERDIDO | DISPONIBLE | ENTREGADO"
+    string estado "PERDIDO | RECUPERADO | VENCIDO | DISPONIBLE | ENTREGADO"
     string foto "nombre del archivo"
     date fecha_reporte "solo perdido"
     int persona_id FK "solo perdido"
@@ -58,6 +59,7 @@ erDiagram
     int id PK
     int persona_id FK
     int objeto_id FK
+    int reporte_id FK "reporte de pérdida, opcional"
     int encargado_id FK
     string estado "PENDIENTE | APROBADA | RECHAZADA"
     datetime fecha_creacion
@@ -102,8 +104,8 @@ erDiagram
 |---|---|---|
 | `encargado` | Único usuario del sistema; responsable de cada acción | RF01, RF13 |
 | `persona` | Estudiante o docente que reporta una pérdida o reclama un objeto | RF02, RF19 |
-| `objeto` | Objetos perdidos y encontrados en una sola tabla, con foto y registro de edición | RF03, RF04, RF05, RF16, RF20, RF25 |
-| `reclamacion` | Une a una persona con un objeto encontrado | RF06, RF08 |
+| `objeto` | Objetos perdidos y encontrados en una sola tabla, con foto y registro de edición | RF03, RF04, RF05, RF16, RF20, RF25, RF28, RF29 |
+| `reclamacion` | Une a una persona con un objeto encontrado y, si lo tiene, con su reporte de pérdida | RF06, RF08, RF27 |
 | `informacion_reclamante` | Lo que la persona describe para probar que el objeto es suyo | RF07, RF09, RF21 |
 | `decision` | Aprobación o rechazo con motivo, encargado y fecha/hora | RF10–RF14, RF17, RF24 |
 | `entrega` | Devolución del objeto, encargado que la hizo y foto de evidencia | RF15, RF18, RF22 |
@@ -111,7 +113,8 @@ erDiagram
 
 ## Estados
 
-- **Objeto:** `PERDIDO` (reporte de pérdida) · `DISPONIBLE` (encontrado, se puede reclamar) → `ENTREGADO` (entregado a quien lo reclamó). Si después se descubre un fraude, sigue `ENTREGADO` y se registra un incidente.
+- **Reporte de pérdida:** `PERDIDO` (abierto) → `RECUPERADO` (la persona recuperó su objeto con una reclamación vinculada) o `VENCIDO` (pasaron 15 días sin recuperarlo; no se borra).
+- **Objeto encontrado:** `DISPONIBLE` (se puede reclamar) → `ENTREGADO` (entregado a quien lo reclamó). Si después se descubre un fraude, sigue `ENTREGADO` y se registra un incidente.
 - **Reclamación:** `PENDIENTE` → `APROBADA` o `RECHAZADA`.
 
 ## Datos de cada persona
@@ -134,9 +137,11 @@ erDiagram
 6. **La decisión es una tabla aparte.** La reclamación cambia de estado; la decisión es un registro histórico que conserva quién decidió, qué, por qué y cuándo (RNF-05).
 7. **La alerta de intentos fallidos (RF24) no necesita tabla.** Se calcula contando las reclamaciones `RECHAZADA` de cada persona sobre objetos distintos. No cuenta un objeto si un incidente reconoce a esa persona como su dueño real: ese rechazo no fue un intento falso.
 8. **El fraude se registra sin cambiar el estado del objeto.** El objeto ya salió de la oficina; el incidente deja la evidencia y la lección aprendida.
-9. **Edición con trazabilidad (RF25).** Se guarda quién hizo la última edición y cuándo. Un objeto `ENTREGADO` no se puede editar, y el estado nunca se edita a mano.
+9. **Edición con trazabilidad (RF25).** Se guarda quién hizo la última edición y cuándo. Los registros cerrados (`ENTREGADO`, `RECUPERADO`, `VENCIDO`) no se pueden editar, y el estado nunca se edita a mano.
 10. **Reclamaciones presenciales.** La persona reclama en el mostrador y el encargado decide en el momento. Un objeto puede acumular varias reclamaciones rechazadas, pero solo una aprobada.
 11. **Detección de posibles fraudes (RF26) sin tablas nuevas.** La entrega previa de un objeto se arma con la entrega, la reclamación aprobada, su descripción y su decisión, que ya existen.
+12. **Reporte vinculado (RF27).** `reclamacion.reporte_id` apunta al reporte de pérdida de la misma persona. Así el sistema sabe qué reporte se resolvió con qué reclamación, y al entregar lo cierra como `RECUPERADO`. Es opcional, porque no todos los que reclaman hicieron antes un reporte.
+13. **Vencimiento de reportes sin borrar (RF29).** A los 15 días de registrado, un reporte abierto pasa a `VENCIDO`. No se borra porque su descripción es evidencia en un posible fraude: demuestra que la persona describió el objeto antes de que alguien se lo llevara. El vencimiento es *perezoso*: no hay un proceso programado; el sistema actualiza los reportes vencidos justo antes de consultar objetos, así el estado siempre está al día cuando alguien lo mira. Los días se cuentan desde la fecha de registro y se configuran con `DIAS_VIGENCIA_REPORTE`.
 
 ## Dónde se aplica cada regla
 
@@ -154,7 +159,11 @@ erDiagram
 | Toda entrega tiene foto de evidencia (RF22) | Base de datos: `foto_evidencia NOT NULL` |
 | El incidente explica cómo ocurrió y qué mejorar (RF23) | Base de datos: `CHECK` de texto no vacío |
 | Las fotos son imágenes reales (JPG, PNG, WEBP) de máximo 5 MB | API: se revisan los primeros bytes del archivo |
-| Un objeto `ENTREGADO` no se edita ni cambia de foto (RF25) | API |
+| Un objeto `ENTREGADO`, `RECUPERADO` o `VENCIDO` no se edita ni cambia de foto (RF25) | API |
+| Un reporte de pérdida solo puede estar `PERDIDO`, `RECUPERADO` o `VENCIDO`; un encontrado, `DISPONIBLE` o `ENTREGADO` | Base de datos: `CHECK` en `objeto` |
+| El reporte vinculado es un reporte de pérdida abierto de la misma persona (RF27) | API |
+| Al entregar, el reporte vinculado pasa a `RECUPERADO` en la misma transacción (RF27) | API |
+| Los reportes abiertos con más de 15 días pasan a `VENCIDO` (RF29) | API (vencimiento perezoso) |
 | Solo se reclaman objetos `ENCONTRADO`; no se reclama uno con reclamación aprobada que aún no se entrega (HCU06) | API |
 | Un objeto ya `ENTREGADO` se puede reclamar para comparar, pero no se puede aprobar (RF26) | API |
 | La descripción del reclamante se registra una sola vez y no se modifica (RF07) | API |
@@ -173,7 +182,7 @@ python seed.py          # crea las tablas, borra las fotos anteriores y carga da
 python verificar_bd.py  # comprueba relaciones y que se rechacen datos inválidos
 ```
 
-**Datos de prueba:** 1 encargado, 4 estudiantes, 1 docente, 8 objetos (incluye un reporte de pérdida del docente que coincide con una sombrilla ya entregada) y 7 reclamaciones: una pendiente, dos aprobadas y entregadas (una de ellas con incidente de fraude) y cuatro rechazadas (tres de la misma persona, para la alerta del RF24). Son inventados: no corresponden a personas reales ni a la base de datos de la universidad.
+**Datos de prueba:** 1 encargado, 4 estudiantes, 1 docente, 10 objetos (5 encontrados y 5 reportes de pérdida: 3 abiertos, uno recuperado por Luis con su reclamación vinculada y uno registrado hace 20 días que vence al consultar; un reporte del docente coincide con una sombrilla ya entregada) y 7 reclamaciones: una pendiente, dos aprobadas y entregadas (una de ellas con incidente de fraude) y cuatro rechazadas (tres de la misma persona, para la alerta del RF24). Son inventados: no corresponden a personas reales ni a la base de datos de la universidad.
 
 ## Diagrama de clases
 
@@ -181,4 +190,4 @@ El diagrama de clases actualizado con estos cambios está en [`docs/diagramas/di
 
 ## Pendiente para la Fase 7
 
-Agregar los RF19–RF26 al documento del Proyecto de Aula, en la sección de requerimientos y en la tabla de validación y ajuste del alcance, y reemplazar la Figura 2 por el diagrama de clases actualizado.
+Agregar los RF19–RF29 al documento del Proyecto de Aula, en la sección de requerimientos y en la tabla de validación y ajuste del alcance, y reemplazar la Figura 2 por el diagrama de clases actualizado.

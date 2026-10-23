@@ -41,6 +41,9 @@ def registrar_reclamacion(datos: ReclamacionCrear, db: DbSession, encargado: Enc
     Solo se reclaman objetos encontrados. Si el objeto ya se entregó, la
     reclamación se registra para comparar con quien se lo llevó (RF26), pero no
     se podrá aprobar. La respuesta trae la alerta de la persona (RF24).
+
+    Opcional: reporte_id vincula la reclamación con el reporte de pérdida
+    abierto de la persona; al entregar, ese reporte se cierra como RECUPERADO (RF27).
     """
     reclamacion = reclamaciones_service.registrar(db, datos, encargado)
     return reclamaciones_service.con_alerta(db, reclamacion)
@@ -104,6 +107,7 @@ def registrar_entrega(
 ):
     """
     Entrega el objeto de una reclamación aprobada (RF15) y lo marca ENTREGADO (RF16).
+    Si tiene un reporte de pérdida vinculado, lo cierra como RECUPERADO (RF27).
     La foto de la persona con el objeto es obligatoria (RF22): JPG, PNG o WEBP, máx. 5 MB.
     """
     contenido = fotos.leer_subida(foto.file)

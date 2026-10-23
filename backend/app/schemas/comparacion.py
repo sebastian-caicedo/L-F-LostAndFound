@@ -1,5 +1,5 @@
 """
-Esquemas de la comparación y de las coincidencias (RF05, RF09, RF21, RF26).
+Esquemas de la comparación y de las coincidencias (RF05, RF09, RF21, RF26, RF27, RF28).
 
 Aquí se arma lo que el encargado ve para decidir: lo registrado del objeto,
 lo que describe la persona y, si el objeto ya se entregó a otra persona,
@@ -54,6 +54,9 @@ class ComparacionOut(BaseModel):
     alerta: AlertaOut
     descripcion_reclamante: InformacionOut
     objeto: ObjetoComparacion
+    # Reporte de pérdida que la persona hizo antes, si está vinculado (RF27).
+    # Es una descripción más, dada sin haber visto el objeto.
+    reporte: ObjetoComparacion | None = None
     decision: DecisionOut | None
     entrega_previa: EntregaPrevia | None = None
     aviso: str | None = None
@@ -61,9 +64,14 @@ class ComparacionOut(BaseModel):
 
 class Coincidencia(BaseModel):
     """
-    Objeto encontrado que podría ser el que se reportó como perdido (RF05, RF26).
-    Si ya se entregó, incluye a quién y con qué descripción.
+    Posible coincidencia entre un objeto perdido y uno encontrado (RF05, RF26, RF28).
+
+    - Desde un reporte de pérdida: objeto encontrado candidato; si ya se
+      entregó, incluye a quién y con qué descripción (entrega_previa).
+    - Desde un objeto encontrado: reporte de pérdida abierto candidato, con la
+      persona que lo reportó para poder contactarla (reportado_por).
     """
 
     objeto: ObjetoComparacion
     entrega_previa: EntregaPrevia | None = None
+    reportado_por: PersonaOut | None = None

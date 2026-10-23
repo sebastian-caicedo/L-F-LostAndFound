@@ -145,3 +145,34 @@ Authorization: Bearer {{token}}
 GET {{api}}/objetos/8/coincidencias
 Authorization: Bearer {{token}}
 
+### --- Reporte de pérdida vinculado (RF27) ---
+
+### 18. Ana reporta que perdió unos audífonos
+# @name reporteAna
+POST {{api}}/objetos/perdidos
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "persona_id": 1,
+  "tipo": "Audífonos",
+  "descripcion": "Audífonos inalámbricos",
+  "caracteristicas": "Estuche blanco con mis iniciales grabadas"
+}
+
+### 19. Los audífonos encontrados (objeto 5) muestran el reporte de Ana (RF28)
+GET {{api}}/objetos/5/coincidencias
+Authorization: Bearer {{token}}
+
+### 20. Ana reclama los audífonos vinculando su reporte. Al entregarlos, el reporte
+### pasa a RECUPERADO (la entrega se hace en /docs, porque necesita una foto)
+POST {{api}}/reclamaciones
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "persona_id": 1,
+  "objeto_id": 5,
+  "reporte_id": {{reporteAna.response.body.id}}
+}
+

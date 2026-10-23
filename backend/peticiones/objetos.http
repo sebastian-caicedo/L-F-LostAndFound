@@ -68,6 +68,18 @@ Content-Type: application/json
   "descripcion": "Cambio no permitido"
 }
 
+### 8. Reportes de pérdida abiertos (RF29: los vencidos tienen estado VENCIDO)
+GET {{api}}/objetos?tipo_registro=PERDIDO&estado=PERDIDO
+Authorization: Bearer {{token}}
+
+### 9. Reportes vencidos (la chaqueta de María, registrada hace 20 días)
+GET {{api}}/objetos?estado=VENCIDO
+Authorization: Bearer {{token}}
+
+### 10. Coincidencias desde un objeto encontrado (RF28): reportes abiertos de la misma categoría
+GET {{api}}/objetos/{{encontrado.response.body.id}}/coincidencias
+Authorization: Bearer {{token}}
+
 ### Las fotos (RF20) se prueban más fácil en http://localhost:8000/docs:
 ### PUT /objetos/{id}/foto tiene un botón para elegir el archivo, y
 ### GET /objetos/{id}/foto muestra la imagen.

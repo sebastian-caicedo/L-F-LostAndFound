@@ -21,7 +21,7 @@ import os
 import struct
 import sys
 import zlib
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 
 from app import config, fotos
 from app.database import Base, SessionLocal, crear_tablas, engine
@@ -114,12 +114,17 @@ def main() -> None:
         db.flush()  # Asigna los id para poder usarlos abajo.
 
         # --- Objetos perdidos (RF03) ---
-        def perdido(tipo, descripcion, caracteristicas, fecha, persona):
-            return Objeto(
-                tipo_registro=TipoRegistro.PERDIDO, estado=EstadoObjeto.PERDIDO,
+        def perdido(tipo, descripcion, caracteristicas, fecha, persona,
+                    estado=EstadoObjeto.PERDIDO, registrado=None):
+            objeto = Objeto(
+                tipo_registro=TipoRegistro.PERDIDO, estado=estado,
                 tipo=tipo, descripcion=descripcion, caracteristicas=caracteristicas,
                 fecha_reporte=fecha, persona=persona, encargado=encargado,
             )
+            # Los reportes abiertos se registran "hoy" para que no venzan (RF29).
+            if registrado:
+                objeto.fecha_registro = registrado
+            return objeto
 
         cuaderno = perdido("Cuaderno", "Cuaderno argollado de cálculo",
                            "Tapa azul, stickers de planetas, nombre escrito en la primera hoja",
@@ -161,8 +166,21 @@ def main() -> None:
                                     "Roja, mango de madera y una cinta verde amarrada en la punta",
                                     date(2026, 10, 8), carlos)
 
+        # Luis reportó la pérdida de su billetera y la recuperó: su reclamación está
+        # vinculada a este reporte, que quedó RECUPERADO al entregarla (RF27).
+        billetera_perdida = perdido("Billetera", "Billetera de cuero café",
+                                    "Cierre dañado y un carné de gimnasio adentro",
+                                    date(2026, 9, 27), luis, EstadoObjeto.RECUPERADO,
+                                    datetime(2026, 9, 27, 10, 0))
+        # Reporte registrado hace 20 días que nunca apareció: al consultar objetos
+        # el sistema lo pasa a VENCIDO, porque superó los días de vigencia (RF29).
+        hace_20_dias = datetime.now() - timedelta(days=20)
+        chaqueta_perdida = perdido("Chaqueta", "Chaqueta impermeable",
+                                   "Verde oliva, con un llavero de tortuga en el cierre",
+                                   hace_20_dias.date(), maria, registrado=hace_20_dias)
+
         db.add_all([cuaderno, termo, celular, billetera, audifonos, sombrilla, calculadora,
-                    sombrilla_perdida])
+                    sombrilla_perdida, billetera_perdida, chaqueta_perdida])
         db.flush()
 
         # --- Reclamaciones ---
@@ -192,6 +210,7 @@ def main() -> None:
         rec_billetera = reclamacion(luis, billetera,
                                     "Billetera café con el cierre dañado y un carné de gimnasio",
                                     EstadoReclamacion.APROBADA, datetime(2026, 9, 29, 9, 15))
+        rec_billetera.reporte = billetera_perdida
         decidir(rec_billetera, ResultadoDecision.APROBADA,
                 "Describió el cierre dañado y el carné de gimnasio, que no eran visibles",
                 datetime(2026, 9, 29, 9, 30))
@@ -244,7 +263,8 @@ def main() -> None:
         db.commit()
 
     print("Base de datos creada y poblada con datos de prueba.")
-    print("  1 encargado (usuario: encargado), 4 estudiantes, 1 docente, 8 objetos,")
+    print("  1 encargado (usuario: encargado), 4 estudiantes, 1 docente, 10 objetos")
+    print("  (5 encontrados y 5 reportes de pérdida: 3 abiertos, 1 recuperado y 1 por vencer),")
     print("  7 reclamaciones (1 pendiente, 2 aprobadas, 4 rechazadas), 2 entregas, 1 incidente.")
 
 

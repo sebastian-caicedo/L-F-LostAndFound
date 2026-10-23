@@ -43,6 +43,11 @@ FOTO_MAX_MB: int = int(os.getenv("FOTO_MAX_MB", "5"))
 # cual el sistema alerta al encargado sobre una persona (RF24).
 UMBRAL_ALERTA_RECHAZOS: int = int(os.getenv("UMBRAL_ALERTA_RECHAZOS", "3"))
 
+# Días que un reporte de pérdida sigue abierto desde que se registró. Después
+# pasa a VENCIDO: sale de los reportes abiertos y de las coincidencias, pero
+# no se borra (RF29).
+DIAS_VIGENCIA_REPORTE: int = int(os.getenv("DIAS_VIGENCIA_REPORTE", "15"))
+
 
 def validar_configuracion() -> None:
     """

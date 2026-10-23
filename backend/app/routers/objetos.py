@@ -57,7 +57,10 @@ def listar_objetos(
     """
     Consulta los objetos registrados (RF05). Filtros opcionales y combinables:
     - tipo_registro: PERDIDO o ENCONTRADO.
-    - estado: PERDIDO, DISPONIBLE o ENTREGADO.
+    - estado: PERDIDO (reportes abiertos), RECUPERADO, VENCIDO, DISPONIBLE o ENTREGADO.
+
+    Los reportes de pérdida vencen a los 15 días de registrados (RF29): pasan a
+    VENCIDO, no se borran.
     - tipo: categoría (celular, billetera...).
     - buscar: texto contenido en la descripción.
 
@@ -75,9 +78,12 @@ def obtener_objeto(objeto_id: int, db: DbSession):
 @router.get("/{objeto_id}/coincidencias", response_model=list[Coincidencia])
 def coincidencias(objeto_id: int, db: DbSession):
     """
-    Posibles coincidencias de un objeto reportado como perdido (RF05, RF26):
-    objetos encontrados de la misma categoría. Si alguno ya se entregó, muestra
-    a quién, cuándo y qué describió esa persona, para evaluar un posible fraude.
+    Posibles coincidencias entre perdidos y encontrados, en las dos direcciones
+    (RF05, RF26, RF28):
+    - De un reporte de pérdida: objetos encontrados de la misma categoría; si
+      alguno ya se entregó, muestra a quién y qué describió esa persona.
+    - De un objeto encontrado: reportes de pérdida abiertos de la misma
+      categoría, con la persona que lo reportó para contactarla.
     """
     return objetos_service.coincidencias(db, objeto_id)
 
@@ -86,8 +92,8 @@ def coincidencias(objeto_id: int, db: DbSession):
 def editar_objeto(objeto_id: int, datos: ObjetoEditar, db: DbSession, encargado: EncargadoActual):
     """
     Corrige los datos de un objeto (RF25). Solo cambia los campos enviados y
-    registra quién y cuándo lo editó. No se puede editar un objeto ENTREGADO
-    ni cambiar su estado.
+    registra quién y cuándo lo editó. No se puede editar un objeto ENTREGADO,
+    RECUPERADO o VENCIDO, ni cambiar su estado.
     """
     return objetos_service.editar(db, objeto_id, datos, encargado)
 

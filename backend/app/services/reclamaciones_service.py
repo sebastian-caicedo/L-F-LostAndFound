@@ -1,6 +1,6 @@
 """
 Reglas de negocio de reclamaciones, revisión, decisión y entrega
-(RF06–RF16, RF21, RF22, RF24, RF26).
+(RF06–RF16, RF21, RF22, RF24, RF26, RF27).
 
 Flujo presencial:
 1. La persona llega al mostrador y el encargado registra la reclamación (RF06).
@@ -8,6 +8,8 @@ Flujo presencial:
 3. Solo entonces el sistema muestra la comparación con la foto (RF09, RF21).
 4. El encargado aprueba o rechaza con un motivo (RF10–RF14).
 5. Si aprobó, entrega el objeto con una foto de evidencia (RF15, RF16, RF22).
+   Si la reclamación está vinculada al reporte de pérdida de la persona, ese
+   reporte se cierra como RECUPERADO en la misma transacción (RF27).
 
 Si alguien reclama un objeto que YA se entregó a otra persona, la reclamación
 se puede registrar para comparar: el sistema muestra quién se lo llevó y qué
@@ -40,7 +42,7 @@ from app.schemas.reclamaciones import (
     ReclamacionCrear,
     ReclamacionOut,
 )
-from app.services import alertas_service, historial_service
+from app.services import alertas_service, historial_service, objetos_service
 
 
 def obtener(db: Session, reclamacion_id: int) -> Reclamacion:
@@ -90,6 +92,8 @@ def registrar(db: Session, datos: ReclamacionCrear, encargado: Encargado) -> Rec
     - Sí se puede reclamar un objeto ya ENTREGADO: sirve para comparar con quien
       se lo llevó y detectar un posible fraude (RF26). No se podrá aprobar.
     - Una persona no puede tener dos reclamaciones pendientes del mismo objeto.
+    - Si se indica reporte_id (RF27): debe ser un reporte de pérdida ABIERTO de
+      esta misma persona. Al entregar, ese reporte pasa a RECUPERADO.
     """
     if db.get(Persona, datos.persona_id) is None:
         raise DatoInvalido(f"No existe una persona con id {datos.persona_id}. Regístrala primero.")
@@ -113,13 +117,36 @@ def registrar(db: Session, datos: ReclamacionCrear, encargado: Encargado) -> Rec
     if duplicada is not None:
         raise Conflicto(f"Esta persona ya tiene una reclamación pendiente de este objeto (id {duplicada}).")
 
+    if datos.reporte_id is not None:
+        _validar_reporte(db, datos.reporte_id, datos.persona_id)
+
     reclamacion = Reclamacion(
-        persona_id=datos.persona_id, objeto_id=datos.objeto_id, encargado_id=encargado.id
+        persona_id=datos.persona_id,
+        objeto_id=datos.objeto_id,
+        reporte_id=datos.reporte_id,
+        encargado_id=encargado.id,
     )
     db.add(reclamacion)
     db.commit()
     db.refresh(reclamacion)
     return reclamacion
+
+
+def _validar_reporte(db: Session, reporte_id: int, persona_id: int) -> None:
+    """El reporte vinculado debe ser un reporte de pérdida abierto de la misma persona (RF27)."""
+    objetos_service.vencer_reportes(db)
+    reporte = db.get(Objeto, reporte_id)
+    if reporte is None or reporte.tipo_registro != TipoRegistro.PERDIDO:
+        raise DatoInvalido(f"No existe un reporte de pérdida con id {reporte_id}.")
+    if reporte.persona_id != persona_id:
+        raise DatoInvalido("Ese reporte de pérdida pertenece a otra persona.")
+    if reporte.estado == EstadoObjeto.VENCIDO:
+        raise AccionNoPermitida(
+            "Ese reporte de pérdida ya venció. Registra la reclamación sin vincularlo, "
+            "o registra un reporte nuevo si la persona sigue buscando el objeto."
+        )
+    if reporte.estado != EstadoObjeto.PERDIDO:
+        raise AccionNoPermitida("Ese reporte de pérdida ya está cerrado: la persona recuperó su objeto.")
 
 
 def registrar_informacion(db: Session, reclamacion_id: int, datos: InformacionCrear) -> Reclamacion:
@@ -205,6 +232,7 @@ def comparacion(db: Session, reclamacion_id: int) -> ComparacionOut:
         alerta=alertas_service.alerta_de(db, reclamacion.persona_id),
         descripcion_reclamante=reclamacion.informacion,
         objeto=reclamacion.objeto,
+        reporte=reclamacion.reporte,
         decision=reclamacion.decision,
         entrega_previa=previa,
         aviso=aviso,
@@ -270,8 +298,10 @@ def registrar_entrega(
 
     - Solo con reclamación APROBADA y sin entrega previa.
     - La foto de la persona con el objeto es obligatoria (RF22).
-    - La entrega y el cambio de estado se guardan juntos (una transacción):
-      si algo falla, no queda ninguno de los dos y se borra la foto guardada.
+    - Si la reclamación tiene un reporte de pérdida vinculado, ese reporte pasa
+      a RECUPERADO (RF27), aunque haya vencido mientras tanto.
+    - La entrega y los cambios de estado se guardan juntos (una transacción):
+      si algo falla, no queda nada y se borra la foto guardada.
     """
     reclamacion = obtener(db, reclamacion_id)
     if reclamacion.estado != EstadoReclamacion.APROBADA:
@@ -291,6 +321,9 @@ def registrar_entrega(
         )
         db.add(entrega)
         reclamacion.objeto.estado = EstadoObjeto.ENTREGADO
+        reporte = reclamacion.reporte
+        if reporte is not None and reporte.estado in (EstadoObjeto.PERDIDO, EstadoObjeto.VENCIDO):
+            reporte.estado = EstadoObjeto.RECUPERADO
         db.commit()
     except Exception:
         db.rollback()

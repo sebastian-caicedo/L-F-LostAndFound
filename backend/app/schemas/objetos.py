@@ -1,9 +1,10 @@
-"""Esquemas del módulo de objetos (RF03, RF04, RF05, RF20, RF25)."""
+"""Esquemas del módulo de objetos (RF03, RF04, RF05, RF20, RF25, RF29)."""
 
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 
 from pydantic import BaseModel, ConfigDict, Field, computed_field, model_validator
 
+from app import config
 from app.models import EstadoObjeto, TipoRegistro
 from app.schemas.auth import EncargadoOut
 from app.schemas.comunes import Categoria, FechaPasada, TextoLargo, TextoOpcional
@@ -113,6 +114,17 @@ class ObjetoBase(BaseModel):
     def foto_url(self) -> str | None:
         """Ruta protegida para ver la foto. Requiere el token de sesión."""
         return f"/objetos/{self.id}/foto" if self.foto else None
+
+    @computed_field
+    @property
+    def vence_el(self) -> date | None:
+        """
+        Fecha en que vence un reporte de pérdida abierto (RF29): los días de
+        vigencia se cuentan desde que se registró. Solo aplica a reportes PERDIDO.
+        """
+        if self.estado != EstadoObjeto.PERDIDO:
+            return None
+        return self.fecha_registro.date() + timedelta(days=config.DIAS_VIGENCIA_REPORTE)
 
 
 class ObjetoResumen(ObjetoBase):

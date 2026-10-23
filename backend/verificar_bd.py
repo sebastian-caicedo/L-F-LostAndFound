@@ -15,10 +15,12 @@ Las pruebas automatizadas completas del backend se harán con pytest en la Fase 
 
 import sys
 
+from datetime import datetime, timedelta
+
 from sqlalchemy import distinct, func, select
 from sqlalchemy.exc import IntegrityError
 
-from app import fotos
+from app import config, fotos
 from app.database import SessionLocal
 from app.models import (
     Decision,
@@ -73,7 +75,7 @@ def main() -> None:
         conteos = {
             "encargado": (Encargado, 1),
             "persona": (Persona, 5),
-            "objeto": (Objeto, 8),
+            "objeto": (Objeto, 10),
             "reclamacion": (Reclamacion, 7),
             "informacion_reclamante": (InformacionReclamante, 7),
             "decision": (Decision, 6),
@@ -112,6 +114,28 @@ def main() -> None:
             incidente.entrega.reclamacion.objeto.estado == EstadoObjeto.ENTREGADO
             and incidente.propietario_real.tipo == TipoPersona.DOCENTE,
             "El incidente apunta a una entrega, el objeto sigue ENTREGADO y tiene dueño real (RF23)",
+        )
+
+        billetera_rec = db.scalar(select(Reclamacion).where(Reclamacion.reporte_id.is_not(None)))
+        resultado(
+            billetera_rec is not None
+            and billetera_rec.reporte.estado == EstadoObjeto.RECUPERADO
+            and billetera_rec.reporte.persona_id == billetera_rec.persona_id
+            and billetera_rec.entrega is not None,
+            "La reclamación vinculada a un reporte de la misma persona lo dejó RECUPERADO (RF27)",
+        )
+
+        limite = datetime.now() - timedelta(days=config.DIAS_VIGENCIA_REPORTE)
+        por_vencer = db.scalars(
+            select(Objeto.tipo).where(
+                Objeto.tipo_registro == TipoRegistro.PERDIDO,
+                Objeto.estado.in_([EstadoObjeto.PERDIDO, EstadoObjeto.VENCIDO]),
+                Objeto.fecha_registro < limite,
+            )
+        ).all()
+        resultado(
+            por_vencer == ["Chaqueta"],
+            f"Hay 1 reporte con más de {config.DIAS_VIGENCIA_REPORTE} días para vencer: {por_vencer} (RF29)",
         )
 
         # RF24: personas con 3 o más reclamaciones rechazadas de objetos distintos.
@@ -166,6 +190,12 @@ def main() -> None:
                                          estado=EstadoObjeto.PERDIDO))
     debe_rechazar("Objeto encontrado con estado PERDIDO (estado incoherente)",
                   lambda db: objeto_base(db, estado=EstadoObjeto.PERDIDO))
+    debe_rechazar("Objeto encontrado con estado RECUPERADO (solo aplica a reportes)",
+                  lambda db: objeto_base(db, estado=EstadoObjeto.RECUPERADO))
+    debe_rechazar("Reporte de pérdida con estado ENTREGADO (solo aplica a encontrados)",
+                  lambda db: objeto_base(db, tipo_registro=TipoRegistro.PERDIDO,
+                                         persona_id=primer(db, Persona).id,
+                                         estado=EstadoObjeto.ENTREGADO))
 
     debe_rechazar(
         "Reclamación con una persona que no existe (RNF-03)",

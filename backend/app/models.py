@@ -2,7 +2,7 @@
 Modelos de la base de datos de L&F.
 
 Cada clase es una tabla de SQLite. El diseño parte del diagrama de clases
-corregido (docs/diagramas) con los ajustes de alcance RF19–RF25, y se documenta
+corregido (docs/diagramas) con los ajustes de alcance RF19–RF29, y se documenta
 en docs/modelo-datos.md.
 
 Las reglas se reparten en dos niveles:
@@ -73,13 +73,22 @@ class TipoRegistro(str, enum.Enum):
 class EstadoObjeto(str, enum.Enum):
     """
     Estado del objeto.
-    - PERDIDO: una persona reportó que lo perdió.
+
+    Reportes de pérdida (tipo_registro PERDIDO):
+    - PERDIDO: reporte abierto; la persona sigue buscando el objeto.
+    - RECUPERADO: la persona recuperó su objeto con una reclamación vinculada (RF27).
+    - VENCIDO: pasaron los días de vigencia sin recuperarse (RF29). No se borra:
+      queda en el historial como evidencia.
+
+    Objetos encontrados (tipo_registro ENCONTRADO):
     - DISPONIBLE: fue encontrado y puede ser reclamado.
-    - ENTREGADO: se entregó a quien lo reclamó (RF16). No admite más reclamaciones.
-      Si después se descubre un fraude, sigue ENTREGADO y se registra un incidente.
+    - ENTREGADO: se entregó a quien lo reclamó (RF16). Si después se descubre
+      un fraude, sigue ENTREGADO y se registra un incidente.
     """
 
     PERDIDO = "PERDIDO"
+    RECUPERADO = "RECUPERADO"
+    VENCIDO = "VENCIDO"
     DISPONIBLE = "DISPONIBLE"
     ENTREGADO = "ENTREGADO"
 
@@ -183,7 +192,7 @@ class Objeto(Base):
         ),
         # El estado debe corresponder al tipo de registro.
         CheckConstraint(
-            "(tipo_registro = 'PERDIDO' AND estado = 'PERDIDO') OR "
+            "(tipo_registro = 'PERDIDO' AND estado IN ('PERDIDO', 'RECUPERADO', 'VENCIDO')) OR "
             "(tipo_registro = 'ENCONTRADO' AND estado IN ('DISPONIBLE', 'ENTREGADO'))",
             name="ck_objeto_estado_segun_tipo",
         ),
@@ -224,7 +233,9 @@ class Objeto(Base):
     encargado_modificacion: Mapped["Encargado | None"] = relationship(
         foreign_keys=[encargado_modificacion_id]
     )
-    reclamaciones: Mapped[list["Reclamacion"]] = relationship(back_populates="objeto")
+    reclamaciones: Mapped[list["Reclamacion"]] = relationship(
+        back_populates="objeto", foreign_keys="Reclamacion.objeto_id"
+    )
 
 
 class Reclamacion(Base):
@@ -248,6 +259,9 @@ class Reclamacion(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     persona_id: Mapped[int] = mapped_column(ForeignKey("persona.id"))
     objeto_id: Mapped[int] = mapped_column(ForeignKey("objeto.id"))
+    # Reporte de pérdida de esta misma persona al que corresponde la reclamación
+    # (opcional). Al entregar, ese reporte pasa a RECUPERADO (RF27).
+    reporte_id: Mapped[int | None] = mapped_column(ForeignKey("objeto.id"))
     # Encargado que registró la reclamación.
     encargado_id: Mapped[int] = mapped_column(ForeignKey("encargado.id"))
     estado: Mapped[EstadoReclamacion] = mapped_column(
@@ -257,7 +271,8 @@ class Reclamacion(Base):
     fecha_creacion: Mapped[datetime] = mapped_column(DateTime, default=ahora)
 
     persona: Mapped["Persona"] = relationship(back_populates="reclamaciones")
-    objeto: Mapped["Objeto"] = relationship(back_populates="reclamaciones")
+    objeto: Mapped["Objeto"] = relationship(back_populates="reclamaciones", foreign_keys=[objeto_id])
+    reporte: Mapped["Objeto | None"] = relationship(foreign_keys=[reporte_id])
     encargado: Mapped["Encargado"] = relationship()
     informacion: Mapped["InformacionReclamante | None"] = relationship(back_populates="reclamacion")
     decision: Mapped["Decision | None"] = relationship(back_populates="reclamacion")

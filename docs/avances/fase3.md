@@ -61,6 +61,9 @@ Durante la fase, el equipo amplió el alcance con estos requerimientos. Están d
 | RF24 | Alertar sobre personas con 3 o más reclamaciones rechazadas de objetos distintos | Tener más cuidado con quien intenta reclamar objetos ajenos |
 | RF25 | Editar los datos de un objeto no entregado, con trazabilidad | Corregir datos que no se tuvieron en cuenta al registrarlo |
 | RF26 | Mostrar si un objeto ya se entregó, a quién y con qué descripción, al comparar o buscar coincidencias | Evaluar si quien se llevó un objeto lo robó cuando aparece otra persona que lo describe |
+| RF27 | Vincular la reclamación con el reporte de pérdida de la persona y cerrarlo como recuperado al entregar | Que los reportes no queden abiertos para siempre y saber qué reclamación resolvió cada reporte |
+| RF28 | Coincidencias en las dos direcciones: para un objeto encontrado, los reportes de pérdida abiertos | Al registrar un objeto encontrado, saber a quién podría pertenecer sin tener que buscarlo |
+| RF29 | Vencer a los 15 días los reportes de pérdida no resueltos, sin borrarlos | Sacar de la lista los reportes que nadie cierra, sin perder la evidencia |
 
 ## Decisiones de diseño
 
@@ -102,6 +105,9 @@ Durante la fase, el equipo amplió el alcance con estos requerimientos. Están d
 | RF24 | Alerta de intentos fallidos | Campo `alerta` en cada reclamación; `GET /personas/alertas` |
 | RF25 | Editar objetos | `PATCH /objetos/{id}` |
 | RF26 | Entrega previa y coincidencias | Campo `entrega_previa` en la comparación; `GET /objetos/{id}/coincidencias` |
+| RF27 | Reporte vinculado y recuperado | `reporte_id` en `POST /reclamaciones`; la entrega cierra el reporte como `RECUPERADO` |
+| RF28 | Coincidencias inversas | `GET /objetos/{id}/coincidencias` desde un objeto encontrado, con `reportado_por` |
+| RF29 | Vencimiento de reportes | `vencer_reportes()` antes de consultar objetos; campo `vence_el`; estado `VENCIDO` |
 
 | RNF | Cómo se cumple |
 |---|---|
@@ -109,25 +115,36 @@ Durante la fase, el equipo amplió el alcance con estos requerimientos. Están d
 | RNF-02 Autorización | Solo los encargados activos obtienen y usan un token válido |
 | RNF-03 Integridad | Llaves foráneas activas en SQLite y validación en los servicios |
 | RNF-04 Validación | Esquemas Pydantic y restricciones de la base; mensajes en español |
-| RNF-05 Trazabilidad | Cada decisión, entrega, edición e incidente guarda encargado y fecha |
+| RNF-05 Trazabilidad | Cada decisión, entrega, edición e incidente guarda encargado y fecha; los reportes de pérdida vencen sin borrarse |
 | RNF-07 Mantenibilidad | Arquitectura por capas; las pruebas automatizadas se agregan en la Fase 6 |
 
 ## Verificación
 
 Se probó todo desde un clon limpio del repositorio:
 
-- `python verificar_bd.py`: **29 verificaciones** de datos, relaciones y restricciones, todas correctas.
-- Pruebas de la API: **151 casos**, sin fallas. Cubren:
+- `python verificar_bd.py`: **33 verificaciones** de datos, relaciones y restricciones, todas correctas.
+- Pruebas de la API: **178 casos**, sin fallas. Cubren:
   - inicio de sesión: token válido, contraseña incorrecta, token alterado, vencido o firmado con otra clave, y encargado desactivado (16 casos);
   - personas y objetos: normalización y validación de datos, duplicados, filtros, edición y fotos (55 casos);
   - flujo de reclamación a historial: cada regla del flujo y cada caso que debe fallar (59 casos);
-  - posibles fraudes: escenario de la calculadora entregada y reclamada después, y coincidencias (21 casos).
+  - posibles fraudes: escenario de la calculadora entregada y reclamada después, y coincidencias (21 casos);
+  - reportes de pérdida: vínculo con la reclamación, cierre como recuperado, coincidencias inversas y vencimiento (27 casos).
 - Los 30 endpoints de la API coinciden con la tabla del README.
 - Ningún archivo privado (`.env`, base de datos, fotos) está en el repositorio ni en su historial.
 
 ## Datos de prueba
 
-`python seed.py` crea 1 encargado, 4 estudiantes, 1 docente, 8 objetos y 7 reclamaciones. Incluye un caso pendiente, entregas, rechazos, una persona con alerta y un fraude con incidente. Todos los datos son inventados, y las fotos son imágenes de un solo color.
+`python seed.py` crea 1 encargado, 4 estudiantes, 1 docente, 10 objetos (5 encontrados y 5 reportes de pérdida) y 7 reclamaciones. Incluye un caso pendiente, entregas, rechazos, una persona con alerta, un fraude con incidente, un reporte recuperado y uno que vence. Todos los datos son inventados, y las fotos son imágenes de un solo color.
+
+## Ajuste posterior al cierre (23/10/2026)
+
+Al revisar qué pasa cuando un estudiante reporta una pérdida, se encontraron tres huecos: el reporte nunca se cerraba, no se relacionaba con la reclamación que lo resolvía, y las coincidencias solo se buscaban desde el reporte. Se agregaron los RF27, RF28 y RF29:
+
+- **RF27:** la reclamación puede llevar `reporte_id`, que debe ser un reporte abierto de la misma persona. Al entregar, el reporte pasa a `RECUPERADO` en la misma transacción. La comparación muestra también lo que la persona dijo en su reporte.
+- **RF28:** desde un objeto encontrado, las coincidencias muestran los reportes de pérdida abiertos de la misma categoría, con el teléfono de quien lo reportó.
+- **RF29:** un reporte que no se resuelve en 15 días (`DIAS_VIGENCIA_REPORTE`) pasa a `VENCIDO`. El equipo propuso borrarlo, pero se decidió **vencerlo sin borrarlo**: su descripción es evidencia en un posible fraude y borrar contradice la trazabilidad (RNF-05). El vencimiento se aplica justo antes de consultar objetos, sin un proceso programado.
+
+No se agregaron endpoints: siguen siendo 30.
 
 ## Hallazgos
 
@@ -138,4 +155,4 @@ Se probó todo desde un clon limpio del repositorio:
 
 - **Fase 4 (frontend):** construir las pantallas en Astro. La foto del objeto se muestra detrás de un botón, no de inmediato. El frontend guarda el token y lo borra al cerrar sesión.
 - **Fase 6 (pruebas):** convertir los 151 casos en pruebas de `pytest` dentro de `backend/tests/`.
-- **Fase 7 (documentación):** agregar RF19–RF26 al documento del Proyecto de Aula, reemplazar la Figura 2 por el diagrama de clases actualizado y alinear los diagramas de secuencia, componentes y despliegue con el stack y los endpoints.
+- **Fase 7 (documentación):** agregar RF19–RF29 al documento del Proyecto de Aula, reemplazar la Figura 2 por el diagrama de clases actualizado y alinear los diagramas de secuencia, componentes y despliegue con el stack y los endpoints.

@@ -31,6 +31,8 @@ Iniciar sesión → Registrar persona (estudiante o docente) → Registrar objet
 - La foto de un objeto encontrado no se muestra en una reclamación hasta registrar la descripción del reclamante.
 - Si una entrega resulta fraudulenta, el objeto sigue `ENTREGADO` y se registra un incidente con cómo ocurrió y qué medida se propone.
 - Una persona con **3 o más reclamaciones rechazadas** de objetos distintos genera una alerta para el encargado. La alerta no bloquea: la decisión sigue siendo del encargado. No cuenta el rechazo de un objeto del que después se comprobó, mediante un incidente, que la persona era el dueño real.
+- Un **reporte de pérdida** queda abierto 15 días desde que se registra (`DIAS_VIGENCIA_REPORTE`). Si en ese tiempo no se recupera el objeto, pasa a `VENCIDO`: sale de los reportes abiertos y de las coincidencias, pero **no se borra**, porque queda como evidencia. Si la persona sigue buscando, se registra un reporte nuevo.
+- Una reclamación se puede **vincular al reporte de pérdida** abierto de la misma persona. Al entregar el objeto, ese reporte se cierra como `RECUPERADO`.
 - Se puede registrar la reclamación de un objeto **ya entregado**. No se puede aprobar, pero la comparación muestra a quién se entregó, cuándo, qué describió esa persona y con qué motivo se aprobó, para evaluar un posible fraude. Lo mismo muestran las coincidencias de un reporte de pérdida.
 
 ## Requerimientos funcionales
@@ -70,6 +72,9 @@ Durante la Fase 3 el equipo amplió el alcance con estos requerimientos. Deben r
 | RF24 | Alertar al encargado cuando una persona tiene 3 o más reclamaciones rechazadas de objetos distintos (sin contar objetos de los que se comprobó que era el dueño real) | Baja |
 | RF25 | Editar los datos de un objeto no entregado, registrando quién y cuándo lo editó | Media |
 | RF26 | Mostrar, al comparar una reclamación o al buscar coincidencias de un reporte de pérdida, si el objeto ya se entregó: a quién, cuándo, qué describió esa persona y con qué motivo se aprobó | Media |
+| RF27 | Vincular una reclamación con el reporte de pérdida de la misma persona y cerrar ese reporte como recuperado al entregar el objeto | Media |
+| RF28 | Mostrar coincidencias en las dos direcciones: para un objeto encontrado, los reportes de pérdida abiertos de la misma categoría | Media |
+| RF29 | Vencer los reportes de pérdida que no se resuelven en 15 días (configurable), sin borrarlos | Media |
 
 ## Requerimientos no funcionales
 
@@ -215,20 +220,20 @@ Todos los endpoints, excepto `/health` y `/auth/login`, requieren el token de se
 | GET | `/personas/{id}` | Datos de una persona | RF02, RF19 |
 | POST | `/objetos/perdidos` | Registra un objeto perdido | RF03 |
 | POST | `/objetos/encontrados` | Registra un objeto encontrado | RF04 |
-| GET | `/objetos` | Consulta objetos; filtros `tipo_registro`, `estado`, `tipo` y `buscar` | RF05 |
+| GET | `/objetos` | Consulta objetos; filtros `tipo_registro`, `estado` (`PERDIDO` = reportes abiertos, `RECUPERADO`, `VENCIDO`, `DISPONIBLE`, `ENTREGADO`), `tipo` y `buscar` | RF05, RF29 |
 | GET | `/objetos/{id}` | Detalle de un objeto | RF05 |
 | PATCH | `/objetos/{id}` | Corrige datos de un objeto no entregado | RF25 |
 | PUT | `/objetos/{id}/foto` | Sube o reemplaza la foto de un objeto (JPG, PNG o WEBP, máx. 5 MB) | RF20 |
 | GET | `/objetos/{id}/foto` | Muestra la foto de un objeto | RF20 |
-| GET | `/objetos/{id}/coincidencias` | Objetos encontrados de la misma categoría que un reporte de pérdida, con su entrega si ya se entregaron | RF05, RF26 |
+| GET | `/objetos/{id}/coincidencias` | De un reporte de pérdida: objetos encontrados de la misma categoría, con su entrega si ya se entregaron. De un objeto encontrado: reportes de pérdida abiertos de la misma categoría, con la persona que lo reportó | RF05, RF26, RF28 |
 | GET | `/personas/alertas` | Personas con 3 o más reclamaciones rechazadas de objetos distintos | RF24 |
-| POST | `/reclamaciones` | Registra una reclamación presencial (queda `PENDIENTE`); también de objetos ya entregados, para comparar | RF06, RF26 |
+| POST | `/reclamaciones` | Registra una reclamación presencial (queda `PENDIENTE`); también de objetos ya entregados, para comparar. `reporte_id` opcional para vincular el reporte de pérdida de la persona | RF06, RF26, RF27 |
 | POST | `/reclamaciones/{id}/informacion` | Registra la descripción del reclamante (una sola vez) | RF07 |
 | GET | `/reclamaciones` | Lista reclamaciones (por defecto, las pendientes) con su alerta | RF08, RF24 |
 | GET | `/reclamaciones/{id}` | Datos de una reclamación | RF08 |
 | GET | `/reclamaciones/{id}/comparacion` | Objeto y descripción lado a lado, con foto; solo después de la descripción. Si el objeto ya se entregó, muestra esa entrega | RF09, RF21, RF26 |
 | POST | `/reclamaciones/{id}/decision` | Aprueba o rechaza con motivo; encargado y fecha automáticos | RF10–RF14 |
-| POST | `/reclamaciones/{id}/entrega` | Entrega con foto obligatoria; el objeto pasa a `ENTREGADO` | RF15, RF16, RF22 |
+| POST | `/reclamaciones/{id}/entrega` | Entrega con foto obligatoria; el objeto pasa a `ENTREGADO` y el reporte vinculado a `RECUPERADO` | RF15, RF16, RF22, RF27 |
 | GET | `/entregas/{id}` | Datos de una entrega | RF18 |
 | GET | `/entregas/{id}/foto` | Foto de la persona con el objeto | RF22 |
 | POST | `/entregas/{id}/incidente` | Registra que la entrega fue fraudulenta | RF23 |
@@ -239,6 +244,8 @@ Todos los endpoints, excepto `/health` y `/auth/login`, requieren el token de se
 Las fotos no son públicas: solo se ven con sesión iniciada. La lista de objetos no muestra las características, que solo aparecen en el detalle.
 
 **Orden de uso en el mostrador:** registrar la reclamación → registrar lo que describe la persona sin ver el objeto → ver la comparación (aquí aparecen la foto y las características) → decidir con motivo → si se aprobó, entregar con foto.
+
+**Si alguien reporta una pérdida:** se registra el reporte (`POST /objetos/perdidos`) y se revisan sus coincidencias. Si aparece un objeto encontrado que puede ser suyo, la persona lo reclama vinculando su reporte (`reporte_id`); al entregarlo, el reporte queda `RECUPERADO`. Al registrar un objeto encontrado, sus coincidencias muestran los reportes abiertos que podrían corresponder, con el teléfono de quien lo reportó. Si pasan 15 días sin recuperarlo, el reporte vence.
 
 **Si alguien reclama un objeto que ya se entregó:** se registra la reclamación y su descripción como siempre. La comparación muestra a quién se entregó y qué describió esa persona. Si el encargado concluye que el objeto es de quien reclama ahora, registra un incidente en esa entrega (`POST /entregas/{id}/incidente`) con esta persona como dueño real, y cierra la reclamación como `RECHAZADA` explicando el motivo. Ese rechazo no cuenta para la alerta de la persona.
 

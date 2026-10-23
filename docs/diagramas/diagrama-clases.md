@@ -1,6 +1,6 @@
 # Diagrama de clases — L&F
 
-Versión actualizada del diagrama de clases (Figura 2 del documento de modelado UML). Incorpora el ajuste de alcance RF19–RF26 de la Fase 3 (el RF26 no agrega clases: usa la entrega, la reclamación y el incidente que ya existen) y coincide con la implementación en [`backend/app/models.py`](../../backend/app/models.py).
+Versión actualizada del diagrama de clases (Figura 2 del documento de modelado UML). Incorpora el ajuste de alcance RF19–RF29 de la Fase 3 (el RF26 y el RF28 no agregan clases: usan la entrega, la reclamación y el incidente que ya existen) y coincide con la implementación en [`backend/app/models.py`](../../backend/app/models.py).
 
 ![Diagrama de clases de L&F](diagrama-clases.png)
 
@@ -21,6 +21,9 @@ Versión actualizada del diagrama de clases (Figura 2 del documento de modelado 
 | `Entrega` | Sin foto ni encargado | Agrega `fotoEvidencia` y la relación "realiza" con `Encargado` | RF22 (foto de la persona con el objeto) y trazabilidad de quién entregó |
 | `Incidente` | No existía | Clase nueva, unida a `Entrega`, a `Persona` (dueño real) y a `Encargado` | RF23: registrar entregas fraudulentas, cómo ocurrieron y qué mejorar |
 | Enumeraciones | Se nombraban como tipos | Se muestran `EstadoObjeto`, `EstadoReclamacion` y `ResultadoDecision` con sus valores | Deja explícitos los estados del flujo |
+| `EstadoObjeto` | `PERDIDO`, `DISPONIBLE`, `ENTREGADO` | Agrega `RECUPERADO` y `VENCIDO` para los reportes de pérdida | RF27 (el reporte se cierra al recuperar el objeto) y RF29 (vence a los 15 días sin borrarse) |
+| `ObjetoPerdido` | Solo `registrarReporte()` | Agrega `vencer()` y `marcarRecuperado()` | RF29 y RF27 |
+| `Reclamacion` → `ObjetoPerdido` | No existía | "corresponde a", opcional (`0..1`) | RF27: una reclamación puede vincularse al reporte de pérdida de la misma persona |
 
 ## Cómo leer el diagrama
 
@@ -94,6 +97,8 @@ classDiagram
   class ObjetoPerdido {
     -fechaReporte: date
     +registrarReporte()
+    +vencer()
+    +marcarRecuperado()
   }
   class ObjetoEncontrado {
     -fechaEncontrado: date
@@ -140,6 +145,8 @@ classDiagram
   class EstadoObjeto {
     <<enumeration>>
     PERDIDO
+    RECUPERADO
+    VENCIDO
     DISPONIBLE
     ENTREGADO
   }
@@ -163,6 +170,7 @@ classDiagram
   Persona "1" --> "0..*" ObjetoPerdido : reporta
   Persona "1" --> "0..*" Reclamacion : realiza
   ObjetoEncontrado "1" <-- "0..*" Reclamacion : reclama
+  ObjetoPerdido "0..1" <-- "0..*" Reclamacion : corresponde a
   Encargado "1" --> "0..*" Objeto : registra y edita
   Encargado "1" --> "0..*" Reclamacion : gestiona
   Reclamacion "1" *-- "0..1" InformacionReclamante : contiene

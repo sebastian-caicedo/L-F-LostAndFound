@@ -21,10 +21,17 @@ from app.schemas.personas import PersonaResumen
 class ReclamacionCrear(BaseModel):
     """Datos para registrar una reclamación presencial (RF06)."""
 
-    model_config = ConfigDict(extra="forbid", json_schema_extra={"example": {"persona_id": 3, "objeto_id": 5}})
+    model_config = ConfigDict(
+        extra="forbid",
+        json_schema_extra={"example": {"persona_id": 3, "objeto_id": 5, "reporte_id": None}},
+    )
 
     persona_id: int = Field(description="Id de la persona que reclama (estudiante o docente).")
     objeto_id: int = Field(description="Id del objeto encontrado que reclama.")
+    reporte_id: int | None = Field(
+        default=None,
+        description="Id del reporte de pérdida abierto de esta misma persona, si lo tiene (RF27).",
+    )
 
 
 class InformacionCrear(BaseModel):
@@ -108,6 +115,8 @@ class ReclamacionOut(BaseModel):
     fecha_creacion: datetime
     persona: PersonaResumen
     objeto: ObjetoMini
+    # Reporte de pérdida vinculado, si lo hay (RF27).
+    reporte: ObjetoMini | None = None
     encargado: EncargadoOut
     decision: DecisionOut | None
     # Se usa para calcular tiene_informacion; en el historial sí se muestra.
