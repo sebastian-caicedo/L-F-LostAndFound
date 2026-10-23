@@ -181,15 +181,32 @@ Ese archivo **no se sube al repositorio**: el repositorio solo contiene `.env.ex
 
 ### 2. Backend (FastAPI)
 
+El backend usa un **entorno virtual** (`venv`): una carpeta con su propia copia de Python y de las librerías del proyecto, para no mezclarlas con las de otros proyectos del computador. La carpeta `venv/` no se sube al repositorio; cada integrante la crea en su equipo.
+
+**Primera vez** (crear el entorno e instalar las dependencias), desde la raíz del proyecto:
+
 ```bash
 cd backend
 python -m venv venv
-# Activar el entorno virtual:
-#   Windows:     venv\Scripts\activate
-#   Linux/macOS: source venv/bin/activate
+venv\Scripts\activate          # Windows
+# source venv/bin/activate     # Linux/macOS
 pip install -r requirements.txt
+```
+
+**Cada vez que abras una terminal nueva** hay que activar el entorno otra vez antes de usar el backend:
+
+```bash
+cd backend
+venv\Scripts\activate          # Windows
+# source venv/bin/activate     # Linux/macOS
 uvicorn app.main:app --reload
 ```
+
+- Sabrás que está activo porque la línea de la terminal empieza con `(venv)`.
+- Para salir del entorno: `deactivate`.
+- Si aparece `ModuleNotFoundError` (por ejemplo, `No module named 'dotenv'`), el entorno no está activo o faltan dependencias: actívalo y ejecuta `pip install -r requirements.txt`.
+- Si PowerShell no deja activarlo ("la ejecución de scripts está deshabilitada"), ejecuta una sola vez `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned` y vuelve a intentarlo, o usa la terminal **cmd** en vez de PowerShell.
+- Si borraste la carpeta `venv`, repite los pasos de **Primera vez**.
 
 La API queda disponible en `http://localhost:8000`. Para verificar que funciona, abre `http://localhost:8000/health`; debe responder `{"status": "ok"}`. La documentación interactiva de la API está en `http://localhost:8000/docs`: con el botón **Authorize** se inicia sesión y se pueden probar los endpoints protegidos.
 
