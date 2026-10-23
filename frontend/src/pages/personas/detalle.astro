@@ -1,0 +1,165 @@
+---
+/*
+  Detalle de una persona: /personas/detalle?id=N
+
+  Reúne en una sola pantalla todo lo que ha hecho la persona (trazabilidad,
+  RF17, RF18, RF24):
+  - Sus datos y, si la tiene, la alerta de intentos fallidos.
+  - Sus reportes de pérdida, con su estado y vencimiento (RF03, RF29).
+  - Sus reclamaciones, con la decisión y el motivo (RF17).
+  - Los objetos que se ha llevado (entregas, RF18).
+
+  Endpoints: GET /personas/{id}, GET /personas/alertas,
+  GET /objetos?tipo_registro=PERDIDO&persona_id, GET /historial/reclamaciones?persona_id,
+  GET /historial/entregas?persona_id
+*/
+import App from '../../layouts/App.astro';
+---
+
+<App titulo="Detalle de la persona" seccion="/personas">
+  <a class="volver" href="/personas">← Volver a Personas</a>
+  <p id="error" class="mensaje-error" role="alert" hidden></p>
+
+  <div id="contenido" hidden>
+    <h1 id="titulo"></h1>
+    <p class="ayuda" id="subtitulo"></p>
+    <div id="alerta"></div>
+
+    <div class="tarjeta">
+      <dl class="datos" id="datos"></dl>
+    </div>
+
+    <section class="seccion">
+      <h2>Reportes de pérdida</h2>
+      <div class="envoltura-tabla">
+        <table class="tabla">
+          <thead>
+            <tr><th>N.º</th><th>Tipo</th><th>Descripción</th><th>Perdido el</th><th>Vence el</th><th>Estado</th><th></th></tr>
+          </thead>
+          <tbody id="reportes"></tbody>
+        </table>
+        <p id="sin-reportes" class="vacio" hidden>No ha reportado objetos perdidos.</p>
+      </div>
+    </section>
+
+    <section class="seccion">
+      <h2>Reclamaciones</h2>
+      <div class="envoltura-tabla">
+        <table class="tabla">
+          <thead>
+            <tr><th>N.º</th><th>Fecha</th><th>Objeto</th><th>Estado</th><th>Decisión</th><th></th></tr>
+          </thead>
+          <tbody id="reclamaciones"></tbody>
+        </table>
+        <p id="sin-reclamaciones" class="vacio" hidden>No ha reclamado objetos.</p>
+      </div>
+    </section>
+
+    <section class="seccion">
+      <h2>Objetos que se ha llevado</h2>
+      <div class="envoltura-tabla">
+        <table class="tabla">
+          <thead>
+            <tr><th>Fecha</th><th>Objeto</th><th>Entregó</th><th>Observaciones</th><th></th></tr>
+          </thead>
+          <tbody id="entregas"></tbody>
+        </table>
+        <p id="sin-entregas" class="vacio" hidden>No se le ha entregado ningún objeto.</p>
+      </div>
+    </section>
+  </div>
+</App>
+
+<script>
+  import { api } from '../../lib/api.js';
+  import { htmlAlerta, mapaAlertas, NOMBRE_TIPO } from '../../lib/persona.js';
+  import { listarObjetos, enlaceObjeto, siguientePaso } from '../../lib/objetos.js';
+  import { $, escapar, fecha, fechaHora, etiquetaEstado, mostrarMensaje } from '../../lib/ui.js';
+
+  const id = Number(new URLSearchParams(window.location.search).get('id'));
+
+  const verObjeto = (objetoId) =>
+    `<a class="boton boton-secundario" href="/objetos/detalle?id=${objetoId}">Ver objeto</a>`;
+
+  async function cargar() {
+    if (!id) {
+      mostrarMensaje($('error'), 'Falta el número de la persona en la dirección.');
+      return;
+    }
+    try {
+      const [persona, alertas, reportes, reclamaciones, entregas] = await Promise.all([
+        api(`/personas/${id}`),
+        mapaAlertas(),
+        listarObjetos({ tipo_registro: 'PERDIDO', persona_id: id }),
+        api(`/historial/reclamaciones?persona_id=${id}`),
+        api(`/historial/entregas?persona_id=${id}`),
+      ]);
+
+      // Datos y alerta (RF24)
+      $('titulo').textContent = persona.nombre;
+      $('subtitulo').textContent = `${NOMBRE_TIPO[persona.tipo]} · registrado el ${fecha(persona.fecha_registro)}`;
+      $('alerta').innerHTML = htmlAlerta(alertas.get(persona.id));
+      $('datos').innerHTML = [
+        ['Código', persona.codigo],
+        ['Carrera', persona.carrera],
+        ['Correo', persona.correo],
+        ['Teléfono', persona.telefono],
+      ]
+        .filter(([, v]) => v)
+        .map(([n, v]) => `<dt>${n}</dt><dd>${escapar(v)}</dd>`)
+        .join('');
+
+      // Reportes de pérdida (RF03, RF29)
+      $('sin-reportes').hidden = reportes.length > 0;
+      $('reportes').innerHTML = reportes
+        .map((o) => `
+          <tr>
+            <td class="numero-col">${o.id}</td>
+            <td><strong>${escapar(o.tipo)}</strong></td>
+            <td>${escapar(o.descripcion)}</td>
+            <td>${fecha(o.fecha_reporte) || '—'}</td>
+            <td>${fecha(o.vence_el) || '—'}</td>
+            <td>${etiquetaEstado(o.estado)}</td>
+            <td>${verObjeto(o.id)}</td>
+          </tr>`)
+        .join('');
+
+      // Reclamaciones (RF17)
+      $('sin-reclamaciones').hidden = reclamaciones.length > 0;
+      $('reclamaciones').innerHTML = reclamaciones
+        .map((r) => {
+          const paso = siguientePaso(r);
+          return `
+            <tr>
+              <td class="numero-col">${r.id}</td>
+              <td>${fechaHora(r.fecha_creacion)}</td>
+              <td>${enlaceObjeto(r.objeto)}<br><span class="texto-suave">${escapar(r.objeto.descripcion)}</span></td>
+              <td>${etiquetaEstado(r.estado)}</td>
+              <td>${r.decision ? `${escapar(r.decision.motivo)}<br><span class="texto-suave">${escapar(r.decision.encargado.nombre)} · ${fechaHora(r.decision.fecha_hora)}</span>` : '—'}</td>
+              <td>${paso ? `<a class="boton boton-principal" href="${paso.enlace}" title="${paso.texto}">${paso.boton}</a>` : ''}</td>
+            </tr>`;
+        })
+        .join('');
+
+      // Entregas (RF18)
+      $('sin-entregas').hidden = entregas.length > 0;
+      $('entregas').innerHTML = entregas
+        .map((e) => `
+          <tr>
+            <td>${fechaHora(e.fecha_hora)}</td>
+            <td>${enlaceObjeto(e.reclamacion.objeto)}
+              ${e.incidente ? '<span class="etiqueta etiqueta-alerta">Con incidente</span>' : ''}</td>
+            <td>${escapar(e.encargado.nombre)}</td>
+            <td>${escapar(e.observaciones ?? '—')}</td>
+            <td>${verObjeto(e.reclamacion.objeto.id)}</td>
+          </tr>`)
+        .join('');
+
+      $('contenido').hidden = false;
+    } catch (e) {
+      mostrarMensaje($('error'), e.message);
+    }
+  }
+
+  cargar();
+</script>

@@ -1,10 +1,162 @@
 ---
-/* Pantalla provisional: se construye en la entrega 3 de la Fase 4. */
+/*
+  Objetos: consulta de objetos encontrados y reportes de pérdida (RF05).
+
+  - Pestañas por tipo de registro y estado. La pestaña elegida queda en la
+    dirección (?ver=...), así los contadores del mostrador llevan directo a
+    la lista que corresponde y "Volver" regresa a la misma pestaña.
+  - Filtros por categoría y por texto de la descripción.
+  - La lista NO muestra características (RF21): solo aparecen en el detalle.
+
+  Endpoint: GET /objetos?tipo_registro&estado&tipo&buscar
+*/
 import App from '../layouts/App.astro';
-import EnConstruccion from '../components/EnConstruccion.astro';
+import { CATEGORIAS } from '../lib/objetos.js';
 ---
 
 <App titulo="Objetos" seccion="/objetos">
-  <h1>Objetos</h1>
-  <EnConstruccion entrega={3} descripcion="Objetos encontrados y reportes de pérdida, con pestañas, detalle, edición, foto y coincidencias." />
+  <div class="encabezado">
+    <div>
+      <h1>Objetos</h1>
+      <p class="ayuda">Objetos encontrados y reportes de pérdida. Haz clic en uno para ver el detalle.</p>
+    </div>
+    <a class="boton boton-principal" href="/mostrador/entregar">+ Registrar objeto encontrado</a>
+  </div>
+
+  <div class="grupos-pestanas" role="tablist" aria-label="Qué objetos ver">
+    <div class="grupo-pestanas">
+      <span class="grupo-pestanas-titulo">Encontrados:</span>
+      <button type="button" class="pestana" role="tab" data-ver="disponibles">Disponibles</button>
+      <button type="button" class="pestana" role="tab" data-ver="entregados">Entregados</button>
+    </div>
+    <div class="grupo-pestanas">
+      <span class="grupo-pestanas-titulo">Reportes de pérdida:</span>
+      <button type="button" class="pestana" role="tab" data-ver="reportes">Abiertos</button>
+      <button type="button" class="pestana" role="tab" data-ver="recuperados">Recuperados</button>
+      <button type="button" class="pestana" role="tab" data-ver="vencidos">Vencidos</button>
+    </div>
+  </div>
+
+  <form id="filtros" class="filtros" novalidate>
+    <div class="campo">
+      <label for="filtro-tipo">Categoría</label>
+      <input id="filtro-tipo" type="text" list="categorias" placeholder="Todas" />
+      <datalist id="categorias">{CATEGORIAS.map((c) => <option value={c} />)}</datalist>
+    </div>
+    <div class="campo">
+      <label for="filtro-buscar">Texto en la descripción</label>
+      <input id="filtro-buscar" type="search" placeholder="Ej.: negro, cuero…" />
+    </div>
+    <button type="submit" class="boton boton-principal">Filtrar</button>
+    <button type="button" id="limpiar" class="boton boton-secundario">Limpiar</button>
+  </form>
+
+  <p id="error" class="mensaje-error" role="alert" hidden></p>
+  <p id="conteo" class="conteo"></p>
+  <div class="envoltura-tabla">
+    <table class="tabla">
+      <thead id="cabecera"></thead>
+      <tbody id="filas"></tbody>
+    </table>
+    <p id="vacio" class="vacio" hidden>No hay objetos con estos filtros.</p>
+  </div>
 </App>
+
+<script>
+  import { escapar, fecha, etiquetaEstado, mostrarMensaje, ocultarMensaje, $ } from '../lib/ui.js';
+  import { listarObjetos } from '../lib/objetos.js';
+  import { enlacePersona } from '../lib/persona.js';
+
+  /*
+    Cada pestaña es una consulta al backend y unas columnas propias:
+    - Encontrados: lugar, fecha en que se encontró y si tiene foto.
+    - Reportes: quién lo reportó, cuándo lo perdió y hasta cuándo sigue abierto.
+  */
+  const VISTAS = {
+    disponibles: { tipo_registro: 'ENCONTRADO', estado: 'DISPONIBLE' },
+    entregados: { tipo_registro: 'ENCONTRADO', estado: 'ENTREGADO' },
+    reportes: { tipo_registro: 'PERDIDO', estado: 'PERDIDO' },
+    recuperados: { tipo_registro: 'PERDIDO', estado: 'RECUPERADO' },
+    vencidos: { tipo_registro: 'PERDIDO', estado: 'VENCIDO' },
+  };
+
+  const parametros = new URLSearchParams(window.location.search);
+  let ver = VISTAS[parametros.get('ver')] ? parametros.get('ver') : 'disponibles';
+
+  const detalle = (o) => `<a class="boton boton-secundario" href="/objetos/detalle?id=${o.id}">Ver detalle</a>`;
+
+  const COLUMNAS_ENCONTRADO = {
+    titulos: ['N.º', 'Tipo', 'Descripción', 'Lugar', 'Encontrado el', 'Foto', 'Estado', ''],
+    fila: (o) => [
+      `<td class="numero-col">${o.id}</td>`,
+      `<td><strong>${escapar(o.tipo)}</strong></td>`,
+      `<td>${escapar(o.descripcion)}</td>`,
+      `<td>${escapar(o.lugar_encontrado ?? '—')}</td>`,
+      `<td>${fecha(o.fecha_encontrado) || '—'}</td>`,
+      `<td>${o.tiene_foto ? 'Sí' : 'No'}</td>`,
+      `<td>${etiquetaEstado(o.estado)}</td>`,
+      `<td>${detalle(o)}</td>`,
+    ],
+  };
+
+  const COLUMNAS_REPORTE = {
+    titulos: ['N.º', 'Tipo', 'Descripción', 'Reportado por', 'Perdido el', 'Vence el', 'Estado', ''],
+    fila: (o) => [
+      `<td class="numero-col">${o.id}</td>`,
+      `<td><strong>${escapar(o.tipo)}</strong></td>`,
+      `<td>${escapar(o.descripcion)}</td>`,
+      `<td>${o.persona ? enlacePersona(o.persona) : '—'}</td>`,
+      `<td>${fecha(o.fecha_reporte) || '—'}</td>`,
+      `<td>${fecha(o.vence_el) || '—'}</td>`,
+      `<td>${etiquetaEstado(o.estado)}</td>`,
+      `<td>${detalle(o)}</td>`,
+    ],
+  };
+
+  async function cargar() {
+    ocultarMensaje($('error'));
+    const consulta = VISTAS[ver];
+    const columnas = consulta.tipo_registro === 'ENCONTRADO' ? COLUMNAS_ENCONTRADO : COLUMNAS_REPORTE;
+
+    // Marca la pestaña y guarda la vista en la dirección (sin recargar).
+    document.querySelectorAll('.pestana').forEach((p) => p.setAttribute('aria-selected', String(p.dataset.ver === ver)));
+    history.replaceState(null, '', `/objetos?ver=${ver}`);
+
+    $('cabecera').innerHTML = `<tr>${columnas.titulos.map((t) => `<th>${t}</th>`).join('')}</tr>`;
+    $('filas').innerHTML = '';
+    $('conteo').textContent = 'Cargando…';
+    try {
+      const objetos = await listarObjetos({
+        ...consulta,
+        tipo: $('filtro-tipo').value.trim(),
+        buscar: $('filtro-buscar').value.trim(),
+      });
+      $('filas').innerHTML = objetos.map((o) => `<tr>${columnas.fila(o).join('')}</tr>`).join('');
+      $('vacio').hidden = objetos.length > 0;
+      $('conteo').textContent = `${objetos.length} ${objetos.length === 1 ? 'objeto' : 'objetos'}`;
+    } catch (e) {
+      $('conteo').textContent = '';
+      mostrarMensaje($('error'), e.message);
+    }
+  }
+
+  document.querySelectorAll('.pestana').forEach((pestana) => {
+    pestana.addEventListener('click', () => {
+      ver = pestana.dataset.ver;
+      cargar();
+    });
+  });
+
+  $('filtros').addEventListener('submit', (evento) => {
+    evento.preventDefault();
+    cargar();
+  });
+
+  $('limpiar').addEventListener('click', () => {
+    $('filtro-tipo').value = '';
+    $('filtro-buscar').value = '';
+    cargar();
+  });
+
+  cargar();
+</script>

@@ -34,7 +34,6 @@ export function crearBuscarPersona(raiz, { alSeleccionar, alCambiar } = {}) {
   const sinResultados = q('[data-sin-resultados]');
   const resultados = q('[data-resultados]');
   const formNueva = q('[data-form-nueva]');
-  const errorNueva = q('[data-error-nueva]');
   const zonaElegida = q('[data-elegida]');
   const cajaAlerta = q('[data-alerta]');
 
@@ -110,60 +109,17 @@ export function crearBuscarPersona(raiz, { alSeleccionar, alCambiar } = {}) {
 
   // ---------- Registro de una persona nueva ----------
 
-  const radios = [...formNueva.querySelectorAll('input[type=radio]')];
-  const tipoElegido = () => radios.find((r) => r.checked).value;
-
-  function ajustarCamposPorTipo() {
-    const esEstudiante = tipoElegido() === 'ESTUDIANTE';
-    formNueva.querySelectorAll('[data-solo-estudiante]').forEach((campo) => {
-      campo.hidden = !esEstudiante;
-    });
-  }
-  radios.forEach((r) => r.addEventListener('change', ajustarCamposPorTipo));
+  const registro = activarFormPersona(formNueva, {
+    alRegistrar: (persona) => seleccionar(persona),
+    alCancelar: () => {
+      zonaBuscar.hidden = false;
+    },
+  });
 
   function abrirRegistro() {
-    formNueva.reset();
-    ocultarMensaje(errorNueva);
-    // Si lo buscado parecía un código, se deja escrito para no repetirlo.
-    const valor = texto.value.trim();
-    if (PARECE_CODIGO.test(valor)) formNueva.elements.codigo.value = valor;
-    else if (valor && !valor.includes('@')) formNueva.elements.nombre.value = valor;
-    ajustarCamposPorTipo();
     zonaBuscar.hidden = true;
-    formNueva.hidden = false;
-    formNueva.elements.nombre.focus();
+    registro.abrir(texto.value.trim());
   }
-
-  formNueva.addEventListener('submit', async (evento) => {
-    evento.preventDefault();
-    ocultarMensaje(errorNueva);
-    const campos = formNueva.elements;
-    const tipo = tipoElegido();
-    const datos = {
-      nombre: campos.nombre.value.trim(),
-      correo: campos.correo.value.trim(),
-      telefono: campos.telefono.value.trim(),
-    };
-    if (tipo === 'ESTUDIANTE') {
-      datos.codigo = campos.codigo.value.trim();
-      datos.carrera = campos.carrera.value.trim();
-    }
-    if (Object.values(datos).some((v) => !v)) {
-      mostrarMensaje(errorNueva, 'Completa todos los campos.');
-      return;
-    }
-    const ruta = tipo === 'ESTUDIANTE' ? '/personas/estudiantes' : '/personas/docentes';
-    const boton = formNueva.querySelector('button[type=submit]');
-    await conBoton(boton, 'Registrando…', async () => {
-      try {
-        const persona = await api(ruta, { metodo: 'POST', datos });
-        formNueva.hidden = true;
-        seleccionar(persona);
-      } catch (error) {
-        mostrarMensaje(errorNueva, error.message);
-      }
-    });
-  });
 
   // ---------- Persona elegida ----------
 
@@ -215,10 +171,6 @@ export function crearBuscarPersona(raiz, { alSeleccionar, alCambiar } = {}) {
   raiz.addEventListener('click', (evento) => {
     const accion = evento.target.closest('[data-accion]')?.dataset.accion;
     if (accion === 'nueva') abrirRegistro();
-    if (accion === 'cancelar-nueva') {
-      formNueva.hidden = true;
-      zonaBuscar.hidden = false;
-    }
     if (accion === 'cambiar') {
       reiniciar();
       alCambiar?.();
@@ -234,8 +186,90 @@ export function crearBuscarPersona(raiz, { alSeleccionar, alCambiar } = {}) {
   };
 }
 
+/**
+ * Activa el formulario de registro de personas (componente FormPersona.astro).
+ * @param form el <form data-form-nueva>.
+ * @param opciones.alRegistrar(persona) se llama cuando el backend la registró.
+ * @param opciones.alCancelar() se llama al presionar "Cancelar".
+ * Devuelve { abrir(textoBuscado) }: muestra el formulario vacío y, si lo
+ * buscado parecía un código o un nombre, lo deja escrito.
+ */
+export function activarFormPersona(form, { alRegistrar, alCancelar } = {}) {
+  const error = form.querySelector('[data-error-nueva]');
+  const radios = [...form.querySelectorAll('input[type=radio]')];
+  const tipoElegido = () => radios.find((r) => r.checked).value;
+
+  function ajustarCamposPorTipo() {
+    const esEstudiante = tipoElegido() === 'ESTUDIANTE';
+    form.querySelectorAll('[data-solo-estudiante]').forEach((campo) => {
+      campo.hidden = !esEstudiante;
+    });
+  }
+  radios.forEach((r) => r.addEventListener('change', ajustarCamposPorTipo));
+
+  form.querySelector('[data-accion="cancelar-nueva"]').addEventListener('click', () => {
+    form.hidden = true;
+    alCancelar?.();
+  });
+
+  form.addEventListener('submit', async (evento) => {
+    evento.preventDefault();
+    ocultarMensaje(error);
+    const campos = form.elements;
+    const tipo = tipoElegido();
+    const datos = {
+      nombre: campos.nombre.value.trim(),
+      correo: campos.correo.value.trim(),
+      telefono: campos.telefono.value.trim(),
+    };
+    if (tipo === 'ESTUDIANTE') {
+      datos.codigo = campos.codigo.value.trim();
+      datos.carrera = campos.carrera.value.trim();
+    }
+    if (Object.values(datos).some((v) => !v)) {
+      mostrarMensaje(error, 'Completa todos los campos.');
+      return;
+    }
+    const ruta = tipo === 'ESTUDIANTE' ? '/personas/estudiantes' : '/personas/docentes';
+    const boton = form.querySelector('button[type=submit]');
+    await conBoton(boton, 'Registrando…', async () => {
+      try {
+        const persona = await api(ruta, { metodo: 'POST', datos });
+        form.hidden = true;
+        alRegistrar?.(persona);
+      } catch (e) {
+        mostrarMensaje(error, e.message);
+      }
+    });
+  });
+
+  return {
+    abrir(textoBuscado = '') {
+      form.reset();
+      ocultarMensaje(error);
+      if (PARECE_CODIGO.test(textoBuscado)) form.elements.codigo.value = textoBuscado;
+      else if (textoBuscado && !textoBuscado.includes('@')) form.elements.nombre.value = textoBuscado;
+      ajustarCamposPorTipo();
+      form.hidden = false;
+      form.elements.nombre.focus();
+    },
+  };
+}
+
 /** HTML de la caja roja de alerta de intentos fallidos, para otros pasos. */
 export function htmlAlerta(alerta) {
   if (!alerta?.activa) return '';
   return `<div class="caja-alerta" role="alert"><strong>Alerta de intentos fallidos.</strong> ${escapar(alerta.mensaje)}</div>`;
+}
+
+/** Mapa id de persona → alerta, con las personas que tienen alerta activa (RF24). */
+export async function mapaAlertas() {
+  const lista = await api('/personas/alertas');
+  return new Map(lista.map((item) => [item.persona.id, item.alerta]));
+}
+
+/** Enlace al detalle de una persona, con su código si lo tiene. */
+export function enlacePersona(persona) {
+  const codigo = persona.codigo ? ` <span class="texto-suave">(${escapar(persona.codigo)})</span>` : '';
+  return `<a href="/personas/detalle?id=${persona.id}">${escapar(persona.nombre)}</a>${codigo}`;
 }

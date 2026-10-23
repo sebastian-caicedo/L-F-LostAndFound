@@ -1,0 +1,405 @@
+---
+/*
+  Detalle de un objeto: /objetos/detalle?id=N
+
+  - Todos los datos, con las características, quién lo registró y quién lo
+    modificó por última vez (RF05, RF25).
+  - Foto: ver, agregar o cambiar con la cámara o un archivo (RF20).
+  - Editar los datos mientras el registro esté abierto (RF25). Los registros
+    cerrados (entregado, recuperado, vencido) quedan como evidencia.
+  - Coincidencias en las dos direcciones (RF05, RF26, RF28).
+  - Trazabilidad: reclamaciones del objeto y su entrega (RF17, RF18).
+
+  Se usa ?id= en vez de una ruta /objetos/5 porque el frontend se genera
+  como páginas estáticas: una sola página sirve para todos los objetos.
+*/
+import App from '../../layouts/App.astro';
+import SelectorFoto from '../../components/SelectorFoto.astro';
+import { CATEGORIAS } from '../../lib/objetos.js';
+---
+
+<App titulo="Detalle del objeto" seccion="/objetos">
+  <a id="volver" class="volver" href="/objetos">← Volver a Objetos</a>
+  <p id="error" class="mensaje-error" role="alert" hidden></p>
+
+  <div id="contenido" hidden>
+    <div class="encabezado">
+      <div>
+        <h1 id="titulo"></h1>
+        <p class="ayuda" id="subtitulo"></p>
+      </div>
+      <button type="button" id="boton-editar" class="boton boton-secundario" hidden>Editar datos</button>
+    </div>
+    <p id="aviso-cerrado" class="caja-info" hidden></p>
+    <p id="ok" class="mensaje-ok" role="status" hidden></p>
+
+    <div class="comparacion">
+      <!-- Datos -->
+      <div class="tarjeta">
+        <h3>Datos</h3>
+        <div id="datos"></div>
+      </div>
+
+      <!-- Foto -->
+      <div class="tarjeta">
+        <h3>Foto</h3>
+        <img id="foto" class="foto-objeto" alt="Foto del objeto" hidden />
+        <p id="sin-foto" class="texto-suave" hidden>Este objeto no tiene foto.</p>
+        <div id="zona-foto" hidden>
+          <button type="button" id="abrir-foto" class="boton boton-secundario">Agregar o cambiar foto</button>
+          <div id="cambiar-foto" hidden>
+            <SelectorFoto id="selector-foto" />
+            <p id="error-foto" class="mensaje-error" role="alert" hidden></p>
+            <div class="acciones">
+              <button type="button" id="guardar-foto" class="boton boton-principal">Guardar foto</button>
+              <button type="button" id="cancelar-foto" class="boton boton-secundario">Cancelar</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Edición (RF25) -->
+    <form id="form-editar" class="tarjeta seccion" novalidate hidden>
+      <h2>Editar datos</h2>
+      <p class="ayuda">Solo se guardan los campos que cambies. Queda registrado quién hizo el cambio y cuándo.</p>
+      <div class="dos-columnas">
+        <div class="campo">
+          <label for="ed-tipo">Tipo de objeto</label>
+          <input id="ed-tipo" name="tipo" type="text" list="categorias" maxlength="50" />
+          <datalist id="categorias">{CATEGORIAS.map((c) => <option value={c} />)}</datalist>
+        </div>
+        <div class="campo">
+          <label for="ed-descripcion">Descripción general</label>
+          <input id="ed-descripcion" name="descripcion" type="text" maxlength="2000" />
+        </div>
+        <div class="campo campo-ancho">
+          <label for="ed-caracteristicas">Características</label>
+          <textarea id="ed-caracteristicas" name="caracteristicas" maxlength="2000"></textarea>
+        </div>
+        <div class="campo" data-solo="ENCONTRADO">
+          <label for="ed-lugar">Lugar donde se encontró</label>
+          <input id="ed-lugar" name="lugar_encontrado" type="text" maxlength="150" />
+        </div>
+        <div class="campo" data-solo="ENCONTRADO">
+          <label for="ed-fecha-encontrado">Fecha en que se encontró</label>
+          <input id="ed-fecha-encontrado" name="fecha_encontrado" type="date" />
+        </div>
+        <div class="campo" data-solo="PERDIDO">
+          <label for="ed-fecha-reporte">Fecha en que se perdió</label>
+          <input id="ed-fecha-reporte" name="fecha_reporte" type="date" />
+        </div>
+      </div>
+      <p id="error-editar" class="mensaje-error" role="alert" hidden></p>
+      <div class="acciones">
+        <button type="submit" class="boton boton-principal">Guardar cambios</button>
+        <button type="button" id="cancelar-editar" class="boton boton-secundario">Cancelar</button>
+      </div>
+    </form>
+
+    <!-- Coincidencias -->
+    <section id="seccion-coincidencias" class="seccion" hidden>
+      <h2 id="titulo-coincidencias"></h2>
+      <p class="ayuda" id="ayuda-coincidencias"></p>
+      <p id="sin-coincidencias" class="texto-suave" hidden>No hay coincidencias por ahora.</p>
+      <ul id="coincidencias" class="lista-elegir"></ul>
+    </section>
+
+    <!-- Entrega -->
+    <section id="seccion-entrega" class="seccion" hidden>
+      <h2>Entrega</h2>
+      <div id="entrega"></div>
+    </section>
+
+    <!-- Reclamaciones -->
+    <section id="seccion-reclamaciones" class="seccion" hidden>
+      <h2>Reclamaciones de este objeto</h2>
+      <div class="envoltura-tabla">
+        <table class="tabla">
+          <thead>
+            <tr><th>N.º</th><th>Fecha</th><th>Persona</th><th>Estado</th><th>Decisión</th><th></th></tr>
+          </thead>
+          <tbody id="reclamaciones"></tbody>
+        </table>
+        <p id="sin-reclamaciones" class="vacio" hidden>Nadie ha reclamado este objeto.</p>
+      </div>
+    </section>
+  </div>
+</App>
+
+<script>
+  import { api, apiImagen } from '../../lib/api.js';
+  import { crearSelectorFoto } from '../../lib/foto.js';
+  import {
+    htmlDatosObjeto,
+    htmlFoto,
+    cargarFotos,
+    htmlCoincidenciaReporte,
+    htmlCoincidenciaEncontrado,
+    siguientePaso,
+  } from '../../lib/objetos.js';
+  import { enlacePersona } from '../../lib/persona.js';
+  import { $, escapar, fechaHora, etiquetaEstado, hoy, mostrarMensaje, ocultarMensaje, conBoton } from '../../lib/ui.js';
+
+  const id = Number(new URLSearchParams(window.location.search).get('id'));
+  const selector = crearSelectorFoto($('selector-foto'));
+  let objeto = null;
+
+  // Mensajes de por qué un registro cerrado ya no se edita.
+  const CERRADO = {
+    ENTREGADO: 'Este objeto ya se entregó: sus datos quedan como evidencia y no se modifican.',
+    RECUPERADO: 'Este reporte se cerró porque la persona recuperó su objeto. Sus datos no se modifican.',
+    VENCIDO: 'Este reporte venció sin que apareciera el objeto. Queda en el historial y no se modifica.',
+  };
+
+  // La pestaña a la que vuelve el enlace "Volver a Objetos".
+  const PESTANA = {
+    DISPONIBLE: 'disponibles',
+    ENTREGADO: 'entregados',
+    PERDIDO: 'reportes',
+    RECUPERADO: 'recuperados',
+    VENCIDO: 'vencidos',
+  };
+
+  async function cargar() {
+    if (!id) {
+      mostrarMensaje($('error'), 'Falta el número del objeto en la dirección.');
+      return;
+    }
+    try {
+      objeto = await api(`/objetos/${id}`);
+    } catch (e) {
+      mostrarMensaje($('error'), e.message);
+      return;
+    }
+    pintarDatos();
+    $('contenido').hidden = false;
+    // Lo demás se carga en paralelo; si algo falla, el resto sigue visible.
+    cargarCoincidencias();
+    cargarTrazabilidad();
+  }
+
+  // ---------- Datos y foto ----------
+  function pintarDatos() {
+    const o = objeto;
+    const esEncontrado = o.tipo_registro === 'ENCONTRADO';
+    const editable = !CERRADO[o.estado];
+
+    $('volver').href = `/objetos?ver=${PESTANA[o.estado]}`;
+    $('titulo').innerHTML = `${escapar(o.tipo)} ${etiquetaEstado(o.estado)}`;
+    $('subtitulo').textContent = `N.º ${o.id} · ${esEncontrado ? 'Objeto encontrado' : 'Reporte de pérdida'}`;
+
+    const extra = [
+      !esEncontrado && o.persona ? ['Reportado por', enlacePersona(o.persona)] : null,
+      ['Registrado', `${fechaHora(o.fecha_registro)} por ${escapar(o.encargado.nombre)}`],
+      o.fecha_modificacion
+        ? ['Última modificación', `${fechaHora(o.fecha_modificacion)} por ${escapar(o.encargado_modificacion.nombre)}`]
+        : null,
+    ].filter(Boolean);
+    $('datos').innerHTML = htmlDatosObjeto(o, extra);
+
+    $('aviso-cerrado').hidden = editable;
+    $('aviso-cerrado').textContent = CERRADO[o.estado] ?? '';
+    $('boton-editar').hidden = !editable;
+    $('zona-foto').hidden = !editable;
+
+    // Foto protegida: se pide con el token.
+    $('sin-foto').hidden = o.tiene_foto;
+    $('foto').hidden = !o.tiene_foto;
+    if (o.tiene_foto) {
+      apiImagen(`${o.foto_url}?v=${Date.now()}`)
+        .then((url) => ($('foto').src = url))
+        .catch(() => ($('foto').hidden = true));
+    }
+  }
+
+  // ---------- Cambiar la foto (RF20) ----------
+  $('abrir-foto').addEventListener('click', () => {
+    $('abrir-foto').hidden = true;
+    $('cambiar-foto').hidden = false;
+  });
+
+  function cerrarFoto() {
+    selector.limpiar();
+    ocultarMensaje($('error-foto'));
+    $('cambiar-foto').hidden = true;
+    $('abrir-foto').hidden = false;
+  }
+  $('cancelar-foto').addEventListener('click', cerrarFoto);
+
+  $('guardar-foto').addEventListener('click', async (evento) => {
+    ocultarMensaje($('error-foto'));
+    const foto = selector.obtener();
+    if (!foto) {
+      mostrarMensaje($('error-foto'), 'Toma o sube una foto primero.');
+      return;
+    }
+    const datos = new FormData();
+    datos.append('foto', foto, 'foto.jpg');
+    await conBoton(evento.currentTarget, 'Guardando…', async () => {
+      try {
+        await api(`/objetos/${id}/foto`, { metodo: 'PUT', datos });
+        objeto = await api(`/objetos/${id}`);
+        cerrarFoto();
+        pintarDatos();
+        mostrarMensaje($('ok'), 'Foto guardada.');
+      } catch (e) {
+        mostrarMensaje($('error-foto'), e.message);
+      }
+    });
+  });
+
+  // ---------- Editar datos (RF25) ----------
+  const form = $('form-editar');
+
+  $('boton-editar').addEventListener('click', () => {
+    const o = objeto;
+    const f = form.elements;
+    f.tipo.value = o.tipo;
+    f.descripcion.value = o.descripcion;
+    f.caracteristicas.value = o.caracteristicas;
+    f.lugar_encontrado.value = o.lugar_encontrado ?? '';
+    f.fecha_encontrado.value = o.fecha_encontrado ?? '';
+    f.fecha_reporte.value = o.fecha_reporte ?? '';
+    f.fecha_encontrado.max = hoy();
+    f.fecha_reporte.max = hoy();
+    form.querySelectorAll('[data-solo]').forEach((c) => (c.hidden = c.dataset.solo !== o.tipo_registro));
+    ocultarMensaje($('error-editar'));
+    ocultarMensaje($('ok'));
+    form.hidden = false;
+    $('boton-editar').hidden = true;
+    form.scrollIntoView({ behavior: 'smooth' });
+    f.tipo.focus({ preventScroll: true });
+  });
+
+  $('cancelar-editar').addEventListener('click', () => {
+    form.hidden = true;
+    $('boton-editar').hidden = false;
+  });
+
+  form.addEventListener('submit', async (evento) => {
+    evento.preventDefault();
+    const error = $('error-editar');
+    ocultarMensaje(error);
+    const f = form.elements;
+    const campos = ['tipo', 'descripcion', 'caracteristicas'];
+    if (objeto.tipo_registro === 'ENCONTRADO') campos.push('lugar_encontrado', 'fecha_encontrado');
+    else campos.push('fecha_reporte');
+
+    // Solo se envían los campos que cambiaron.
+    const cambios = {};
+    for (const campo of campos) {
+      const nuevo = f[campo].value.trim();
+      const anterior = objeto[campo] ?? '';
+      if (nuevo === anterior) continue;
+      if (!nuevo && ['tipo', 'descripcion', 'caracteristicas'].includes(campo)) {
+        mostrarMensaje(error, 'El tipo, la descripción y las características no pueden quedar vacíos.');
+        return;
+      }
+      if (!nuevo && campo.startsWith('fecha')) continue; // una fecha no se borra
+      cambios[campo] = nuevo || null;
+    }
+    if (Object.keys(cambios).length === 0) {
+      mostrarMensaje(error, 'No cambiaste ningún dato.');
+      return;
+    }
+    await conBoton(evento.submitter, 'Guardando…', async () => {
+      try {
+        objeto = await api(`/objetos/${id}`, { metodo: 'PATCH', datos: cambios });
+        form.hidden = true;
+        pintarDatos();
+        mostrarMensaje($('ok'), 'Cambios guardados.');
+        window.scrollTo({ top: 0 });
+        cargarCoincidencias(); // si cambió la categoría, cambian las coincidencias
+      } catch (e) {
+        mostrarMensaje(error, e.message);
+      }
+    });
+  });
+
+  // ---------- Coincidencias (RF05, RF26, RF28) ----------
+  async function cargarCoincidencias() {
+    const o = objeto;
+    // Solo tienen sentido mientras el registro sigue abierto.
+    const aplica = o.estado === 'DISPONIBLE' || o.estado === 'PERDIDO';
+    $('seccion-coincidencias').hidden = !aplica;
+    if (!aplica) return;
+    if (o.tipo_registro === 'ENCONTRADO') {
+      $('titulo-coincidencias').textContent = 'Reportes de pérdida que coinciden';
+      $('ayuda-coincidencias').textContent =
+        'Personas que reportaron un objeto de la misma categoría. Puedes contactarlas para que vengan a reclamarlo.';
+    } else {
+      $('titulo-coincidencias').textContent = 'Objetos encontrados que pueden ser el suyo';
+      $('ayuda-coincidencias').textContent =
+        'Objetos encontrados de la misma categoría. Compara tú las características: el sistema no decide.';
+    }
+    try {
+      const lista = await api(`/objetos/${o.id}/coincidencias`);
+      $('sin-coincidencias').hidden = lista.length > 0;
+      $('coincidencias').innerHTML = lista
+        .map((c) =>
+          o.tipo_registro === 'ENCONTRADO'
+            ? htmlCoincidenciaReporte(c)
+            : htmlCoincidenciaEncontrado(c, { personaId: o.persona.id, reporteId: o.id }),
+        )
+        .join('');
+      cargarFotos($('coincidencias'));
+    } catch (e) {
+      mostrarMensaje($('error'), e.message);
+    }
+  }
+
+  // ---------- Trazabilidad: entrega y reclamaciones (RF17, RF18) ----------
+  async function cargarTrazabilidad() {
+    if (objeto.tipo_registro !== 'ENCONTRADO') return;
+    try {
+      const [reclamaciones, entregas] = await Promise.all([
+        api(`/historial/reclamaciones?objeto_id=${id}`),
+        api(`/historial/entregas?objeto_id=${id}`),
+      ]);
+
+      $('seccion-reclamaciones').hidden = false;
+      $('sin-reclamaciones').hidden = reclamaciones.length > 0;
+      $('reclamaciones').innerHTML = reclamaciones
+        .map((r) => {
+          const paso = siguientePaso(r);
+          return `
+            <tr>
+              <td class="numero-col">${r.id}</td>
+              <td>${fechaHora(r.fecha_creacion)}</td>
+              <td>${enlacePersona(r.persona)} ${r.alerta?.activa ? '<span class="etiqueta etiqueta-alerta">Con alerta</span>' : ''}</td>
+              <td>${etiquetaEstado(r.estado)}</td>
+              <td>${r.decision ? `${escapar(r.decision.motivo)}<br><span class="texto-suave">${escapar(r.decision.encargado.nombre)} · ${fechaHora(r.decision.fecha_hora)}</span>` : '—'}</td>
+              <td>${paso ? `<a class="boton boton-principal" href="${paso.enlace}" title="${paso.texto}">${paso.boton}</a>` : ''}</td>
+            </tr>`;
+        })
+        .join('');
+
+      // Normalmente hay una sola entrega por objeto.
+      if (entregas.length > 0) {
+        $('seccion-entrega').hidden = false;
+        $('entrega').innerHTML = entregas
+          .map((e) => `
+            <div class="tarjeta">
+              <div class="comparacion">
+                <dl class="datos">
+                  <dt>Recibió</dt><dd>${enlacePersona(e.reclamacion.persona)}</dd>
+                  <dt>Fecha</dt><dd>${fechaHora(e.fecha_hora)}</dd>
+                  <dt>Entregó</dt><dd>${escapar(e.encargado.nombre)}</dd>
+                  <dt>Reclamación</dt><dd>N.º ${e.reclamacion.id}</dd>
+                  ${e.observaciones ? `<dt>Observaciones</dt><dd>${escapar(e.observaciones)}</dd>` : ''}
+                  ${e.incidente ? `<dt>Incidente</dt><dd><span class="etiqueta etiqueta-alerta">Con incidente</span> registrado el ${fechaHora(e.incidente.fecha_hora)}</dd>` : ''}
+                </dl>
+                <div>${htmlFoto(e.foto_url, 'Foto de la entrega')}</div>
+              </div>
+            </div>`)
+          .join('');
+        cargarFotos($('entrega'));
+      }
+    } catch (e) {
+      mostrarMensaje($('error'), e.message);
+    }
+  }
+
+  cargar();
+</script>

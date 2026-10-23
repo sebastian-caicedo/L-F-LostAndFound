@@ -1,0 +1,52 @@
+---
+/*
+  Formulario para registrar una persona nueva (RF02, RF19).
+  - Estudiante: nombre, código, carrera, correo y teléfono.
+  - Docente: nombre, correo y teléfono (sin código ni carrera).
+
+  Lo usan el mostrador (dentro de BuscarPersona) y la pantalla Personas.
+  La lógica está en lib/persona.js → activarFormPersona().
+  Los id de los campos empiezan con el id que se le pasa: "<id>-nombre"...
+*/
+interface Props {
+  id: string;
+}
+
+const { id } = Astro.props;
+---
+
+<form class="tarjeta tarjeta-interna" data-form-nueva novalidate hidden>
+  <h3>Registrar persona nueva</h3>
+  <fieldset class="grupo-radio">
+    <legend>Tipo</legend>
+    <label><input type="radio" name={`${id}-tipo`} value="ESTUDIANTE" checked /> Estudiante</label>
+    <label><input type="radio" name={`${id}-tipo`} value="DOCENTE" /> Docente</label>
+  </fieldset>
+  <div class="dos-columnas">
+    <div class="campo">
+      <label for={`${id}-nombre`}>Nombre completo</label>
+      <input id={`${id}-nombre`} type="text" name="nombre" maxlength="100" />
+    </div>
+    <div class="campo" data-solo-estudiante>
+      <label for={`${id}-codigo`}>Código estudiantil</label>
+      <input id={`${id}-codigo`} type="text" name="codigo" maxlength="20" placeholder="T00000000" />
+    </div>
+    <div class="campo" data-solo-estudiante>
+      <label for={`${id}-carrera`}>Carrera</label>
+      <input id={`${id}-carrera`} type="text" name="carrera" maxlength="100" />
+    </div>
+    <div class="campo">
+      <label for={`${id}-correo`}>Correo institucional</label>
+      <input id={`${id}-correo`} type="email" name="correo" maxlength="120" />
+    </div>
+    <div class="campo">
+      <label for={`${id}-telefono`}>Teléfono</label>
+      <input id={`${id}-telefono`} type="tel" name="telefono" maxlength="25" />
+    </div>
+  </div>
+  <p class="mensaje-error" data-error-nueva role="alert" hidden></p>
+  <div class="acciones">
+    <button type="submit" class="boton boton-principal">Registrar</button>
+    <button type="button" class="boton boton-secundario" data-accion="cancelar-nueva">Cancelar</button>
+  </div>
+</form>

@@ -134,8 +134,9 @@ L-F-LostAndFound/
 │   ├── public/              # Archivos estáticos (ícono)
 │   ├── src/
 │   │   ├── pages/           # Una página por pantalla (login, mostrador, objetos...)
+│   │   │                    # Los detalles usan ?id=N: /objetos/detalle?id=5, /personas/detalle?id=2
 │   │   ├── layouts/         # Base.astro (estructura HTML) y App.astro (encabezado y menú)
-│   │   ├── components/      # Piezas reutilizables: pasos, buscar persona, selector de foto
+│   │   ├── components/      # Piezas reutilizables: pasos, buscar y registrar persona, selector de foto
 │   │   ├── lib/             # JavaScript compartido
 │   │   │   ├── api.js       # Llamadas a la API, token de sesión y mensajes de error
 │   │   │   ├── ui.js        # Fechas, estados, mensajes y protección del texto
@@ -229,7 +230,11 @@ La interfaz queda disponible en `http://localhost:4321`. Ingresa con el usuario 
 | Mostrador → Entrega un objeto | Datos del objeto encontrado → foto (opcional) → reportes de pérdida que coinciden, con el contacto de quien lo reportó | RF04, RF20, RF28 | Lista |
 | Mostrador → Perdió algo | Persona (y sus reportes abiertos) → datos del reporte → objetos encontrados que coinciden; desde ahí se puede reclamar | RF02, RF03, RF05, RF19, RF26, RF29 | Lista |
 | Mostrador → Viene a reclamar | Persona (con su alerta) → objeto (sin ver características) y reporte vinculado → descripción a ciegas → comparar y decidir con motivo (con la entrega previa e incidente si ya se entregó) → entrega con foto obligatoria. Se retoma con `?reclamacion=ID` | RF06–RF16, RF21–RF24, RF26, RF27 | Lista |
-| Objetos, Personas, Pendientes | Consulta, detalle y edición | RF05, RF08, RF25 | Entrega 3 |
+| Objetos | Pestañas (disponibles, entregados, reportes abiertos, recuperados y vencidos) y filtros por categoría y texto. Sin características en la lista | RF05, RF21, RF29 | Lista |
+| Objetos → Detalle | Todos los datos con quién lo registró y modificó, foto (cámara o archivo), edición mientras esté abierto, coincidencias, entrega y reclamaciones del objeto | RF05, RF17, RF18, RF20, RF25, RF26, RF28 | Lista |
+| Personas | Pestañas (todas, estudiantes, docentes), búsqueda, marca de alerta y registro de personas. No se editan ni se borran | RF02, RF19, RF24 | Lista |
+| Personas → Detalle | Datos, alerta, reportes de pérdida, reclamaciones con su decisión y objetos que se ha llevado | RF17, RF18, RF24 | Lista |
+| Pendientes | Reclamaciones por decidir (la más antigua primero) y aprobadas por entregar, con el botón para retomarlas en el mostrador | RF08, RF15 | Lista |
 | Historial, Alertas | Filtros del historial y personas con alerta | RF17, RF18, RF24 | Entrega 4 |
 
 ## API
@@ -248,7 +253,7 @@ Todos los endpoints, excepto `/health` y `/auth/login`, requieren el token de se
 | GET | `/personas/{id}` | Datos de una persona | RF02, RF19 |
 | POST | `/objetos/perdidos` | Registra un objeto perdido | RF03 |
 | POST | `/objetos/encontrados` | Registra un objeto encontrado | RF04 |
-| GET | `/objetos` | Consulta objetos; filtros `tipo_registro`, `estado` (`PERDIDO` = reportes abiertos, `RECUPERADO`, `VENCIDO`, `DISPONIBLE`, `ENTREGADO`), `tipo`, `buscar` y `persona_id` (reportes de una persona) | RF05, RF27, RF29 |
+| GET | `/objetos` | Consulta objetos; filtros `tipo_registro`, `estado` (`PERDIDO` = reportes abiertos, `RECUPERADO`, `VENCIDO`, `DISPONIBLE`, `ENTREGADO`), `tipo`, `buscar` y `persona_id` (reportes de una persona). En los reportes incluye quién lo reportó (nombre y código) | RF05, RF27, RF29 |
 | GET | `/objetos/{id}` | Detalle de un objeto | RF05 |
 | PATCH | `/objetos/{id}` | Corrige datos de un objeto no entregado | RF25 |
 | PUT | `/objetos/{id}/foto` | Sube o reemplaza la foto de un objeto (JPG, PNG o WEBP, máx. 5 MB) | RF20 |

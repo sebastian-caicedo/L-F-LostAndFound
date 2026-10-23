@@ -1,10 +1,144 @@
 ---
-/* Pantalla provisional: se construye en la entrega 3 de la Fase 4. */
+/*
+  Personas: estudiantes y docentes registrados (RF02, RF19, RF24).
+
+  - Pestañas: todas, estudiantes o docentes. Búsqueda por nombre, código o correo.
+  - Las personas con alerta de intentos fallidos se marcan en rojo.
+  - Registrar una persona nueva sin pasar por el mostrador.
+  - Las personas no se editan ni se borran (decisión de la Fase 3): sus
+    datos quedan ligados a reportes, reclamaciones y entregas.
+
+  Endpoints: GET /personas?tipo&buscar, GET /personas/alertas,
+  POST /personas/estudiantes, POST /personas/docentes
+*/
 import App from '../layouts/App.astro';
-import EnConstruccion from '../components/EnConstruccion.astro';
+import FormPersona from '../components/FormPersona.astro';
 ---
 
 <App titulo="Personas" seccion="/personas">
-  <h1>Personas</h1>
-  <EnConstruccion entrega={3} descripcion="Búsqueda y registro de estudiantes y docentes, con su historial." />
+  <div class="encabezado">
+    <div>
+      <h1>Personas</h1>
+      <p class="ayuda">Estudiantes y docentes que han reportado o reclamado objetos.</p>
+    </div>
+    <button type="button" id="abrir-registro" class="boton boton-principal">+ Registrar persona</button>
+  </div>
+
+  <div id="registro">
+    <FormPersona id="nueva" />
+  </div>
+  <p id="ok" class="mensaje-ok" role="status" hidden></p>
+
+  <div class="grupos-pestanas" role="tablist" aria-label="Qué personas ver">
+    <div class="grupo-pestanas">
+      <button type="button" class="pestana" role="tab" data-tipo="">Todas</button>
+      <button type="button" class="pestana" role="tab" data-tipo="ESTUDIANTE">Estudiantes</button>
+      <button type="button" class="pestana" role="tab" data-tipo="DOCENTE">Docentes</button>
+    </div>
+  </div>
+
+  <form id="filtros" class="filtros" novalidate>
+    <div class="campo">
+      <label for="buscar">Nombre, código o correo</label>
+      <input id="buscar" type="search" placeholder="Ej.: Ana o T00000001" />
+    </div>
+    <button type="submit" class="boton boton-principal">Buscar</button>
+    <button type="button" id="limpiar" class="boton boton-secundario">Limpiar</button>
+  </form>
+
+  <p id="error" class="mensaje-error" role="alert" hidden></p>
+  <p id="conteo" class="conteo"></p>
+  <div class="envoltura-tabla">
+    <table class="tabla">
+      <thead>
+        <tr><th>Nombre</th><th>Tipo</th><th>Código</th><th>Carrera</th><th>Correo</th><th>Teléfono</th><th></th></tr>
+      </thead>
+      <tbody id="filas"></tbody>
+    </table>
+    <p id="vacio" class="vacio" hidden>No hay personas con esta búsqueda.</p>
+  </div>
 </App>
+
+<script>
+  import { api } from '../lib/api.js';
+  import { activarFormPersona, mapaAlertas, NOMBRE_TIPO } from '../lib/persona.js';
+  import { $, escapar, mostrarMensaje, ocultarMensaje } from '../lib/ui.js';
+
+  const parametros = new URLSearchParams(window.location.search);
+  let tipo = ['ESTUDIANTE', 'DOCENTE'].includes(parametros.get('tipo')) ? parametros.get('tipo') : '';
+  let alertas = new Map();
+
+  async function cargar() {
+    ocultarMensaje($('error'));
+    document.querySelectorAll('.pestana').forEach((p) => p.setAttribute('aria-selected', String(p.dataset.tipo === tipo)));
+    const consulta = new URLSearchParams();
+    if (tipo) consulta.set('tipo', tipo);
+    const buscar = $('buscar').value.trim();
+    if (buscar) consulta.set('buscar', buscar);
+    $('conteo').textContent = 'Cargando…';
+    try {
+      const [personas, mapa] = await Promise.all([api(`/personas?${consulta}`), mapaAlertas()]);
+      alertas = mapa;
+      $('filas').innerHTML = personas
+        .map((p) => {
+          const alerta = alertas.get(p.id);
+          return `
+            <tr>
+              <td><a href="/personas/detalle?id=${p.id}"><strong>${escapar(p.nombre)}</strong></a>
+                ${alerta?.activa ? '<span class="etiqueta etiqueta-alerta">Con alerta</span>' : ''}</td>
+              <td>${NOMBRE_TIPO[p.tipo]}</td>
+              <td>${escapar(p.codigo ?? '—')}</td>
+              <td>${escapar(p.carrera ?? '—')}</td>
+              <td>${escapar(p.correo)}</td>
+              <td>${escapar(p.telefono)}</td>
+              <td><a class="boton boton-secundario" href="/personas/detalle?id=${p.id}">Ver detalle</a></td>
+            </tr>`;
+        })
+        .join('');
+      $('vacio').hidden = personas.length > 0;
+      $('conteo').textContent = `${personas.length} ${personas.length === 1 ? 'persona' : 'personas'}`;
+    } catch (e) {
+      $('conteo').textContent = '';
+      mostrarMensaje($('error'), e.message);
+    }
+  }
+
+  document.querySelectorAll('.pestana').forEach((pestana) => {
+    pestana.addEventListener('click', () => {
+      tipo = pestana.dataset.tipo;
+      cargar();
+    });
+  });
+
+  $('filtros').addEventListener('submit', (evento) => {
+    evento.preventDefault();
+    cargar();
+  });
+
+  $('limpiar').addEventListener('click', () => {
+    $('buscar').value = '';
+    cargar();
+  });
+
+  // ---------- Registrar persona (RF02, RF19) ----------
+  const registro = activarFormPersona($('registro').querySelector('form'), {
+    alRegistrar: (persona) => {
+      $('abrir-registro').hidden = false;
+      mostrarMensaje($('ok'), `${persona.nombre} quedó registrada.`);
+      $('buscar').value = persona.codigo ?? persona.correo;
+      tipo = '';
+      cargar();
+    },
+    alCancelar: () => {
+      $('abrir-registro').hidden = false;
+    },
+  });
+
+  $('abrir-registro').addEventListener('click', () => {
+    ocultarMensaje($('ok'));
+    $('abrir-registro').hidden = true;
+    registro.abrir();
+  });
+
+  cargar();
+</script>

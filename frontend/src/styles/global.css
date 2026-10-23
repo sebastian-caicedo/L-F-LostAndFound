@@ -531,7 +531,7 @@ legend {
   max-height: 260px;
   border-radius: var(--radio);
   border: 1px solid var(--borde);
-  margin-top: 10px;
+  margin: 10px 0;
 }
 
 .caja-entrega-previa {
@@ -552,4 +552,150 @@ legend {
   .comparacion {
     grid-template-columns: 1fr;
   }
+}
+
+/* ---------- Encabezado de pantalla con botón a la derecha ---------- */
+
+.encabezado {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.volver {
+  display: inline-block;
+  margin-bottom: 10px;
+  text-decoration: none;
+  font-weight: 600;
+}
+
+/* ---------- Pestañas (filtros rápidos de una lista) ---------- */
+
+.grupos-pestanas {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 24px;
+  margin-bottom: 16px;
+}
+
+.grupo-pestanas {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.grupo-pestanas-titulo {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--texto-suave);
+  margin-right: 4px;
+}
+
+.pestana {
+  font: inherit;
+  font-size: 0.92rem;
+  padding: 6px 14px;
+  border-radius: 999px;
+  border: 1px solid var(--borde);
+  background: var(--blanco);
+  color: var(--azul);
+  cursor: pointer;
+}
+
+.pestana:hover {
+  background: var(--azul-claro);
+}
+
+.pestana[aria-selected="true"] {
+  background: var(--azul);
+  border-color: var(--azul);
+  color: var(--blanco);
+  font-weight: 600;
+}
+
+/* ---------- Filtros encima de una tabla ---------- */
+
+.filtros {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 0 12px;
+}
+
+.filtros .campo {
+  min-width: 200px;
+}
+
+.filtros .boton {
+  margin-bottom: 14px;
+}
+
+.conteo {
+  color: var(--texto-suave);
+  font-size: 0.9rem;
+  margin: 0 0 8px;
+}
+
+/* ---------- Tablas ---------- */
+
+.envoltura-tabla {
+  overflow-x: auto;
+  background: var(--blanco);
+  border: 1px solid var(--borde);
+  border-radius: var(--radio-tarjeta);
+}
+
+.tabla {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.93rem;
+}
+
+.tabla th {
+  text-align: left;
+  background: var(--azul-claro);
+  color: var(--azul-oscuro);
+  font-weight: 600;
+  padding: 10px 12px;
+  white-space: nowrap;
+}
+
+.tabla td {
+  padding: 10px 12px;
+  border-top: 1px solid var(--borde);
+  vertical-align: top;
+}
+
+.tabla tbody tr:hover {
+  background: var(--azul-muy-claro);
+}
+
+.tabla .numero-col {
+  color: var(--texto-suave);
+  white-space: nowrap;
+}
+
+.tabla .boton {
+  min-height: 32px;
+  padding: 0 12px;
+  font-size: 0.88rem;
+  white-space: nowrap;
+}
+
+.vacio {
+  padding: 18px;
+  color: var(--texto-suave);
+  margin: 0;
+}
+
+/* Secciones del detalle (objeto, persona) */
+.seccion {
+  margin-top: 24px;
+}
+
+.seccion > h2 {
+  margin-bottom: 10px;
 }

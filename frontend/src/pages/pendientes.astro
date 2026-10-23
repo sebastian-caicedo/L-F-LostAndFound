@@ -1,10 +1,108 @@
 ---
-/* Pantalla provisional: se construye en la entrega 3 de la Fase 4. */
+/*
+  Pendientes: reclamaciones que todavía necesitan algo del encargado (RF08).
+
+  1. Por decidir: reclamaciones PENDIENTES, de la más antigua a la más
+     reciente (se atiende primero a quien lleva más tiempo esperando). Puede
+     faltar la descripción de la persona o la decisión.
+  2. Por entregar: reclamaciones APROBADAS cuyo objeto sigue disponible
+     (falta registrar la entrega con foto).
+
+  El botón de cada fila abre el mostrador en el paso que le toca:
+  /mostrador/reclamar?reclamacion=ID
+
+  Endpoints: GET /reclamaciones (PENDIENTE por defecto), GET /reclamaciones?estado=APROBADA
+*/
 import App from '../layouts/App.astro';
-import EnConstruccion from '../components/EnConstruccion.astro';
 ---
 
 <App titulo="Pendientes" seccion="/pendientes">
   <h1>Pendientes</h1>
-  <EnConstruccion entrega={3} descripcion="Reclamaciones que quedaron abiertas, para retomarlas en el paso donde quedaron." />
+  <p class="ayuda">Reclamaciones que todavía necesitan tu atención. La más antigua va primero.</p>
+  <p id="error" class="mensaje-error" role="alert" hidden></p>
+
+  <section class="seccion">
+    <h2>Por decidir <span class="etiqueta" id="conteo-decidir">–</span></h2>
+    <div class="envoltura-tabla">
+      <table class="tabla">
+        <thead>
+          <tr><th>N.º</th><th>Desde</th><th>Persona</th><th>Objeto</th><th>Falta</th><th></th></tr>
+        </thead>
+        <tbody id="por-decidir"></tbody>
+      </table>
+      <p id="sin-decidir" class="vacio" hidden>No hay reclamaciones por decidir.</p>
+    </div>
+  </section>
+
+  <section class="seccion">
+    <h2>Por entregar <span class="etiqueta" id="conteo-entregar">–</span></h2>
+    <p class="ayuda">Reclamaciones aprobadas en las que aún no se registra la entrega con foto.</p>
+    <div class="envoltura-tabla">
+      <table class="tabla">
+        <thead>
+          <tr><th>N.º</th><th>Aprobada</th><th>Persona</th><th>Objeto</th><th>Motivo</th><th></th></tr>
+        </thead>
+        <tbody id="por-entregar"></tbody>
+      </table>
+      <p id="sin-entregar" class="vacio" hidden>No hay objetos aprobados esperando entrega.</p>
+    </div>
+  </section>
 </App>
+
+<script>
+  import { api } from '../lib/api.js';
+  import { enlacePersona } from '../lib/persona.js';
+  import { enlaceObjeto, siguientePaso } from '../lib/objetos.js';
+  import { $, escapar, fechaHora, mostrarMensaje } from '../lib/ui.js';
+
+  const conAlerta = (r) => (r.alerta?.activa ? ' <span class="etiqueta etiqueta-alerta">Con alerta</span>' : '');
+  const celdaObjeto = (r) =>
+    `<td>${enlaceObjeto(r.objeto)}<br><span class="texto-suave">${escapar(r.objeto.descripcion)}</span></td>`;
+  const boton = (paso) => `<a class="boton boton-principal" href="${paso.enlace}">${paso.boton}</a>`;
+
+  async function cargar() {
+    try {
+      const [pendientes, aprobadas] = await Promise.all([
+        api('/reclamaciones'),
+        api('/reclamaciones?estado=APROBADA'),
+      ]);
+      // Aprobadas cuyo objeto sigue disponible: falta la entrega.
+      const porEntregar = aprobadas.filter((r) => siguientePaso(r));
+
+      $('conteo-decidir').textContent = pendientes.length;
+      $('sin-decidir').hidden = pendientes.length > 0;
+      $('por-decidir').innerHTML = pendientes
+        .map((r) => {
+          const paso = siguientePaso(r);
+          return `
+            <tr>
+              <td class="numero-col">${r.id}</td>
+              <td>${fechaHora(r.fecha_creacion)}</td>
+              <td>${enlacePersona(r.persona)}${conAlerta(r)}</td>
+              ${celdaObjeto(r)}
+              <td>${paso.texto}</td>
+              <td>${boton(paso)}</td>
+            </tr>`;
+        })
+        .join('');
+
+      $('conteo-entregar').textContent = porEntregar.length;
+      $('sin-entregar').hidden = porEntregar.length > 0;
+      $('por-entregar').innerHTML = porEntregar
+        .map((r) => `
+          <tr>
+            <td class="numero-col">${r.id}</td>
+            <td>${fechaHora(r.decision.fecha_hora)}<br><span class="texto-suave">${escapar(r.decision.encargado.nombre)}</span></td>
+            <td>${enlacePersona(r.persona)}${conAlerta(r)}</td>
+            ${celdaObjeto(r)}
+            <td>${escapar(r.decision.motivo)}</td>
+            <td>${boton(siguientePaso(r))}</td>
+          </tr>`)
+        .join('');
+    } catch (e) {
+      mostrarMensaje($('error'), e.message);
+    }
+  }
+
+  cargar();
+</script>

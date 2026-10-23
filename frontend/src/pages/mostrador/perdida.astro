@@ -104,7 +104,7 @@ import { CATEGORIAS } from '../../lib/objetos.js';
   import { api } from '../../lib/api.js';
   import { crearPasos } from '../../lib/pasos.js';
   import { crearBuscarPersona } from '../../lib/persona.js';
-  import { htmlDatosObjeto, htmlEntregaPrevia, htmlFoto, cargarFotos, listarObjetos, resumenObjeto } from '../../lib/objetos.js';
+  import { htmlCoincidenciaEncontrado, cargarFotos, listarObjetos, resumenObjeto } from '../../lib/objetos.js';
   import { $, escapar, fecha, hoy, mostrarMensaje, ocultarMensaje, conBoton } from '../../lib/ui.js';
 
   const pasos = crearPasos();
@@ -200,29 +200,13 @@ import { CATEGORIAS } from '../../lib/objetos.js';
     try {
       const coincidencias = await api(`/objetos/${reporte.id}/coincidencias`);
       $('sin-coincidencias').hidden = coincidencias.length > 0;
-      lista.innerHTML = coincidencias.map(htmlCoincidencia).join('');
+      lista.innerHTML = coincidencias
+        .map((c) => htmlCoincidenciaEncontrado(c, { personaId: persona.id, reporteId: reporte.id }))
+        .join('');
       cargarFotos(lista);
     } catch (e) {
       mostrarMensaje($('error-coincidencias'), e.message);
     }
   }
 
-  function htmlCoincidencia({ objeto, entrega_previa }) {
-    const enlace =
-      `/mostrador/reclamar?persona=${persona.id}&objeto=${objeto.id}&reporte=${reporte.id}`;
-    const boton = objeto.estado === 'DISPONIBLE'
-      ? `<a class="boton boton-principal" href="${enlace}">Reclamar este objeto</a>`
-      : `<a class="boton boton-secundario" href="${enlace}">Reclamar para comparar</a>`;
-    return `
-      <li class="tarjeta">
-        <div class="comparacion">
-          <div>
-            ${htmlDatosObjeto(objeto)}
-            ${htmlFoto(objeto.foto_url, `Foto de ${objeto.tipo}`)}
-          </div>
-          <div>${htmlEntregaPrevia(entrega_previa)}</div>
-        </div>
-        <div class="acciones">${boton}</div>
-      </li>`;
-  }
 </script>

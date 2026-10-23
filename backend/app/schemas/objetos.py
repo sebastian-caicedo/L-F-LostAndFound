@@ -133,7 +133,12 @@ class ObjetoResumen(ObjetoBase):
 
     No incluye las características: son lo que el reclamante debe describir
     sin haberlas visto, así que solo aparecen en el detalle del objeto.
+
+    En los reportes de pérdida incluye quién lo reportó (nombre y código),
+    para mostrarlo en la lista sin pedir el detalle de cada uno.
     """
+
+    persona: PersonaResumen | None = None
 
 
 class ObjetoDetalle(ObjetoBase):

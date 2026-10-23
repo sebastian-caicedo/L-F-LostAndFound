@@ -100,7 +100,7 @@ import { CATEGORIAS } from '../../lib/objetos.js';
   import { api } from '../../lib/api.js';
   import { crearPasos } from '../../lib/pasos.js';
   import { crearSelectorFoto } from '../../lib/foto.js';
-  import { htmlDatosObjeto } from '../../lib/objetos.js';
+  import { htmlCoincidenciaReporte } from '../../lib/objetos.js';
   import { $, escapar, hoy, mostrarMensaje, ocultarMensaje, conBoton } from '../../lib/ui.js';
 
   const pasos = crearPasos();
@@ -175,16 +175,7 @@ import { CATEGORIAS } from '../../lib/objetos.js';
     try {
       const lista = await api(`/objetos/${objeto.id}/coincidencias`);
       $('sin-coincidencias').hidden = lista.length > 0;
-      $('coincidencias').innerHTML = lista
-        .map(({ objeto: reporte, reportado_por: p }) => `
-          <li class="tarjeta">
-            <div class="persona-cabecera">
-              <strong>${escapar(p.nombre)}</strong>
-              <span class="texto-suave">${escapar(p.telefono)} · ${escapar(p.correo)}</span>
-            </div>
-            ${htmlDatosObjeto(reporte)}
-          </li>`)
-        .join('');
+      $('coincidencias').innerHTML = lista.map(htmlCoincidenciaReporte).join('');
     } catch (e) {
       mostrarMensaje($('error-coincidencias'), e.message);
     }

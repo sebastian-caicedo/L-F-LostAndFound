@@ -44,8 +44,9 @@ export function resumenObjeto(objeto) {
 /**
  * Datos de un objeto como lista "nombre: valor". Solo incluye las
  * características si vienen en el objeto (la lista general no las trae).
+ * "extra" agrega filas al final, por ejemplo [['Registrado', '...']].
  */
-export function htmlDatosObjeto(objeto) {
+export function htmlDatosObjeto(objeto, extra = []) {
   const filas = [
     ['Tipo', escapar(objeto.tipo)],
     ['Estado', etiquetaEstado(objeto.estado)],
@@ -55,6 +56,7 @@ export function htmlDatosObjeto(objeto) {
     ['Lugar', objeto.lugar_encontrado ? escapar(objeto.lugar_encontrado) : null],
     ['Perdido el', objeto.fecha_reporte ? fecha(objeto.fecha_reporte) : null],
     ['Vence el', objeto.vence_el ? fecha(objeto.vence_el) : null],
+    ...extra,
   ].filter(([, valor]) => valor);
   return `<dl class="datos">${filas.map(([n, v]) => `<dt>${n}</dt><dd>${v}</dd>`).join('')}</dl>`;
 }
@@ -109,4 +111,67 @@ export function listarObjetos(parametros) {
     Object.entries(parametros).filter(([, v]) => v !== undefined && v !== null && v !== ''),
   );
   return api(`/objetos?${consulta}`);
+}
+
+/**
+ * Coincidencia vista desde un OBJETO ENCONTRADO (RF28): un reporte de
+ * pérdida abierto, con el contacto de quien lo reportó para avisarle.
+ */
+export function htmlCoincidenciaReporte({ objeto: reporte, reportado_por: p }) {
+  return `
+    <li class="tarjeta">
+      <div class="persona-cabecera">
+        <strong>${escapar(p.nombre)}</strong>
+        <span class="texto-suave">${escapar(p.telefono)} · ${escapar(p.correo)}</span>
+      </div>
+      ${htmlDatosObjeto(reporte)}
+    </li>`;
+}
+
+/**
+ * Coincidencia vista desde un REPORTE DE PÉRDIDA (RF05, RF26): un objeto
+ * encontrado de la misma categoría, con su entrega si ya se entregó, y el
+ * botón para reclamarlo con la persona y el reporte ya elegidos (RF27).
+ */
+export function htmlCoincidenciaEncontrado({ objeto, entrega_previa }, { personaId, reporteId }) {
+  const enlace = `/mostrador/reclamar?persona=${personaId}&objeto=${objeto.id}&reporte=${reporteId}`;
+  const boton =
+    objeto.estado === 'DISPONIBLE'
+      ? `<a class="boton boton-principal" href="${enlace}">Reclamar este objeto</a>`
+      : `<a class="boton boton-secundario" href="${enlace}">Reclamar para comparar</a>`;
+  return `
+    <li class="tarjeta">
+      <div class="comparacion">
+        <div>
+          ${htmlDatosObjeto(objeto)}
+          ${htmlFoto(objeto.foto_url, `Foto de ${objeto.tipo}`)}
+        </div>
+        <div>${htmlEntregaPrevia(entrega_previa)}</div>
+      </div>
+      <div class="acciones">${boton}</div>
+    </li>`;
+}
+
+/** Enlace al detalle de un objeto. */
+export function enlaceObjeto(objeto, texto = null) {
+  return `<a href="/objetos/detalle?id=${objeto.id}">${escapar(texto ?? objeto.tipo)}</a>`;
+}
+
+/**
+ * Siguiente paso de una reclamación y el botón para retomarla en el
+ * mostrador (/mostrador/reclamar?reclamacion=ID). Devuelve null si ya no
+ * le falta nada (rechazada o entregada).
+ */
+export function siguientePaso(reclamacion) {
+  const enlace = `/mostrador/reclamar?reclamacion=${reclamacion.id}`;
+  if (reclamacion.estado === 'PENDIENTE' && !reclamacion.tiene_informacion) {
+    return { texto: 'Tomar la descripción de la persona', boton: 'Continuar', enlace };
+  }
+  if (reclamacion.estado === 'PENDIENTE') {
+    return { texto: 'Comparar y decidir', boton: 'Continuar', enlace };
+  }
+  if (reclamacion.estado === 'APROBADA' && reclamacion.objeto.estado === 'DISPONIBLE') {
+    return { texto: 'Entregar con foto', boton: 'Entregar', enlace };
+  }
+  return null;
 }
