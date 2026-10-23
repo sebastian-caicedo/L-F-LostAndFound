@@ -1,10 +1,303 @@
 ---
-/* Pantalla provisional: se construye en la entrega 4 de la Fase 4. */
+/*
+  Historial: trazabilidad completa del sistema (RF17, RF18, RF23, RF29).
+
+  Botones de filtro, en cuatro grupos (decisión de la Fase 4):
+  - Reportes de pérdida: abiertos, recuperados, vencidos.
+  - Reclamaciones: pendientes, aprobadas, rechazadas, con lo que describió
+    la persona, la decisión, el motivo, quién decidió y cuándo.
+  - Entregas: quién se llevó cada objeto, quién lo entregó, cuándo y con qué
+    foto. Desde aquí se registra un incidente si se descubre después que el
+    objeto no era de esa persona (RF23).
+  - Incidentes: cómo ocurrió cada fraude y qué medida se propuso.
+
+  El filtro elegido queda en la dirección (?ver=...). El cuadro de texto
+  filtra las filas ya cargadas por persona, código u objeto.
+
+  Endpoints: GET /objetos?tipo_registro=PERDIDO&estado, GET /historial/reclamaciones?estado,
+  GET /historial/entregas, GET /historial/incidentes, POST /entregas/{id}/incidente
+*/
 import App from '../layouts/App.astro';
-import EnConstruccion from '../components/EnConstruccion.astro';
+import BuscarPersona from '../components/BuscarPersona.astro';
 ---
 
 <App titulo="Historial" seccion="/historial">
   <h1>Historial</h1>
-  <EnConstruccion entrega={4} descripcion="Reportes abiertos, recuperados y vencidos; reclamaciones pendientes, aprobadas y rechazadas; entregas e incidentes." />
+  <p class="ayuda">Todo lo que ha pasado en el sistema. Nada se borra: los registros cerrados quedan como evidencia.</p>
+
+  <div class="grupos-pestanas" role="tablist" aria-label="Qué ver en el historial">
+    <div class="grupo-pestanas">
+      <span class="grupo-pestanas-titulo">Reportes:</span>
+      <button type="button" class="pestana" role="tab" data-ver="reportes-abiertos">Abiertos</button>
+      <button type="button" class="pestana" role="tab" data-ver="reportes-recuperados">Recuperados</button>
+      <button type="button" class="pestana" role="tab" data-ver="reportes-vencidos">Vencidos</button>
+    </div>
+    <div class="grupo-pestanas">
+      <span class="grupo-pestanas-titulo">Reclamaciones:</span>
+      <button type="button" class="pestana" role="tab" data-ver="reclamaciones-pendientes">Pendientes</button>
+      <button type="button" class="pestana" role="tab" data-ver="reclamaciones-aprobadas">Aprobadas</button>
+      <button type="button" class="pestana" role="tab" data-ver="reclamaciones-rechazadas">Rechazadas</button>
+    </div>
+    <div class="grupo-pestanas">
+      <button type="button" class="pestana" role="tab" data-ver="entregas">Entregas</button>
+      <button type="button" class="pestana" role="tab" data-ver="incidentes">Incidentes</button>
+    </div>
+  </div>
+
+  <div class="filtros">
+    <div class="campo">
+      <label for="filtro">Filtrar por persona, código u objeto</label>
+      <input id="filtro" type="search" placeholder="Ej.: Luis, T00000002, billetera…" />
+    </div>
+  </div>
+
+  <p id="error" class="mensaje-error" role="alert" hidden></p>
+  <p id="ok" class="mensaje-ok" role="status" hidden></p>
+  <p id="conteo" class="conteo"></p>
+  <div class="envoltura-tabla">
+    <table class="tabla">
+      <thead id="cabecera"></thead>
+      <tbody id="filas"></tbody>
+    </table>
+    <p id="vacio" class="vacio" hidden>No hay registros.</p>
+  </div>
+
+  <!-- Registrar un incidente en una entrega (RF23).
+       El buscador del dueño real tiene su propio <form>, y un formulario no
+       puede ir dentro de otro: por eso queda fuera de #form-incidente y el
+       botón "Registrar incidente" se une al formulario con form="form-incidente". -->
+  <div id="panel-incidente" class="tarjeta seccion" hidden>
+    <h2>Registrar incidente</h2>
+    <div class="caja-info" id="resumen-entrega"></div>
+    <p class="ayuda">
+      Usa esto si se descubre que el objeto se entregó a quien no era su dueño. La entrega no se borra: queda marcada
+      con el incidente y el objeto sigue como entregado.
+    </p>
+    <form id="form-incidente" novalidate>
+      <div class="campo">
+        <label for="inc-como">¿Cómo obtuvo el objeto esa persona?</label>
+        <textarea id="inc-como" name="como_lo_obtuvo" maxlength="2000"></textarea>
+      </div>
+      <div class="campo">
+        <label for="inc-mejora">¿Qué medida evitaría que vuelva a pasar?</label>
+        <textarea id="inc-mejora" name="medida_mejora" maxlength="2000"></textarea>
+      </div>
+    </form>
+    <h3>Dueño real (opcional)</h3>
+    <p class="texto-suave">Si ya se sabe quién es el dueño real, búscalo o regístralo.</p>
+    <BuscarPersona id="dueno" />
+    <p id="error-incidente" class="mensaje-error" role="alert" hidden></p>
+    <div class="acciones">
+      <button type="submit" form="form-incidente" class="boton boton-principal">Registrar incidente</button>
+      <button type="button" id="cancelar-incidente" class="boton boton-secundario">Cancelar</button>
+    </div>
+  </div>
 </App>
+
+<script>
+  import { api } from '../lib/api.js';
+  import { listarObjetos, enlaceObjeto, siguientePaso, htmlFoto, cargarFotos } from '../lib/objetos.js';
+  import { enlacePersona, crearBuscarPersona } from '../lib/persona.js';
+  import { $, escapar, fecha, fechaHora, etiquetaEstado, mostrarMensaje, ocultarMensaje, conBoton } from '../lib/ui.js';
+
+  const conAlerta = (r) => (r.alerta?.activa ? ' <span class="etiqueta etiqueta-alerta">Con alerta</span>' : '');
+  const decision = (d) =>
+    d
+      ? `${escapar(d.motivo)}<br><span class="texto-suave">${escapar(d.encargado.nombre)} · ${fechaHora(d.fecha_hora)}</span>`
+      : '—';
+
+  // ---------- Cada filtro: de dónde salen los datos y cómo se ve cada fila ----------
+  const reportes = (estado) => ({
+    cargar: () => listarObjetos({ tipo_registro: 'PERDIDO', estado }),
+    titulos: ['N.º', 'Tipo', 'Descripción', 'Reportado por', 'Perdido el', 'Registrado', 'Vence el', 'Estado', ''],
+    fila: (o) => [
+      `<td class="numero-col">${o.id}</td>`,
+      `<td><strong>${escapar(o.tipo)}</strong></td>`,
+      `<td>${escapar(o.descripcion)}</td>`,
+      `<td>${o.persona ? enlacePersona(o.persona) : '—'}</td>`,
+      `<td>${fecha(o.fecha_reporte) || '—'}</td>`,
+      `<td>${fecha(o.fecha_registro)}</td>`,
+      `<td>${fecha(o.vence_el) || '—'}</td>`,
+      `<td>${etiquetaEstado(o.estado)}</td>`,
+      `<td><a class="boton boton-secundario" href="/objetos/detalle?id=${o.id}">Ver</a></td>`,
+    ],
+  });
+
+  const reclamaciones = (estado) => ({
+    cargar: () => api(`/historial/reclamaciones?estado=${estado}`),
+    titulos: ['N.º', 'Fecha', 'Persona', 'Objeto', 'Describió', 'Decisión', 'Entrega', ''],
+    fila: (r) => {
+      const paso = siguientePaso(r);
+      return [
+        `<td class="numero-col">${r.id}</td>`,
+        `<td>${fechaHora(r.fecha_creacion)}</td>`,
+        `<td>${enlacePersona(r.persona)}${conAlerta(r)}</td>`,
+        `<td>${enlaceObjeto(r.objeto)}<br><span class="texto-suave">${escapar(r.objeto.descripcion)}</span>` +
+          (r.reporte ? `<br><span class="texto-suave">Con su reporte N.º ${r.reporte.id}</span>` : '') +
+          '</td>',
+        `<td>${r.informacion ? escapar(r.informacion.caracteristicas) : '<span class="texto-suave">Aún no</span>'}</td>`,
+        `<td>${decision(r.decision)}</td>`,
+        `<td>${r.entrega ? `${fechaHora(r.entrega.fecha_hora)}<br><span class="texto-suave">${escapar(r.entrega.encargado.nombre)}</span>` : '—'}</td>`,
+        `<td>${paso ? `<a class="boton boton-principal" href="${paso.enlace}" title="${paso.texto}">${paso.boton}</a>` : ''}</td>`,
+      ];
+    },
+  });
+
+  const VISTAS = {
+    'reportes-abiertos': reportes('PERDIDO'),
+    'reportes-recuperados': reportes('RECUPERADO'),
+    'reportes-vencidos': reportes('VENCIDO'),
+    'reclamaciones-pendientes': reclamaciones('PENDIENTE'),
+    'reclamaciones-aprobadas': reclamaciones('APROBADA'),
+    'reclamaciones-rechazadas': reclamaciones('RECHAZADA'),
+    entregas: {
+      cargar: () => api('/historial/entregas'),
+      titulos: ['Fecha', 'Recibió', 'Objeto', 'Entregó', 'Observaciones', 'Foto', 'Incidente'],
+      fila: (e) => [
+        `<td>${fechaHora(e.fecha_hora)}</td>`,
+        `<td>${enlacePersona(e.reclamacion.persona)}</td>`,
+        `<td>${enlaceObjeto(e.reclamacion.objeto)}<br><span class="texto-suave">${escapar(e.reclamacion.objeto.descripcion)}</span></td>`,
+        `<td>${escapar(e.encargado.nombre)}</td>`,
+        `<td>${escapar(e.observaciones ?? '—')}</td>`,
+        `<td class="celda-foto">${htmlFoto(e.foto_url, 'Foto de la entrega')}</td>`,
+        `<td>${
+          e.incidente
+            ? `<span class="etiqueta etiqueta-alerta">Con incidente</span><br><span class="texto-suave">${fechaHora(e.incidente.fecha_hora)}</span>`
+            : `<button type="button" class="boton boton-secundario" data-incidente="${e.id}">Registrar incidente</button>`
+        }</td>`,
+      ],
+    },
+    incidentes: {
+      cargar: () => api('/historial/incidentes'),
+      titulos: ['Fecha', 'Objeto', 'Se lo llevó', 'Dueño real', 'Cómo lo obtuvo', 'Medida de mejora', 'Registró'],
+      fila: (i) => [
+        `<td>${fechaHora(i.fecha_hora)}</td>`,
+        `<td>${enlaceObjeto(i.entrega.reclamacion.objeto)}<br><span class="texto-suave">Entregado el ${fechaHora(i.entrega.fecha_hora)}</span></td>`,
+        `<td>${enlacePersona(i.entrega.reclamacion.persona)}</td>`,
+        `<td>${i.propietario_real ? enlacePersona(i.propietario_real) : '<span class="texto-suave">Sin identificar</span>'}</td>`,
+        `<td>${escapar(i.como_lo_obtuvo)}</td>`,
+        `<td>${escapar(i.medida_mejora)}</td>`,
+        `<td>${escapar(i.encargado.nombre)}</td>`,
+      ],
+    },
+  };
+
+  const parametros = new URLSearchParams(window.location.search);
+  let ver = VISTAS[parametros.get('ver')] ? parametros.get('ver') : 'reclamaciones-pendientes';
+  let registros = [];
+
+  async function cargar() {
+    ocultarMensaje($('error'));
+    cerrarIncidente();
+    document.querySelectorAll('.pestana').forEach((p) => p.setAttribute('aria-selected', String(p.dataset.ver === ver)));
+    history.replaceState(null, '', `/historial?ver=${ver}`);
+    $('cabecera').innerHTML = `<tr>${VISTAS[ver].titulos.map((t) => `<th>${t}</th>`).join('')}</tr>`;
+    $('filas').innerHTML = '';
+    $('conteo').textContent = 'Cargando…';
+    try {
+      registros = await VISTAS[ver].cargar();
+      pintar();
+    } catch (e) {
+      $('conteo').textContent = '';
+      mostrarMensaje($('error'), e.message);
+    }
+  }
+
+  // Filtro de texto sobre las filas ya cargadas (no vuelve a consultar el backend).
+  function pintar() {
+    const texto = $('filtro').value.trim().toLowerCase();
+    const visibles = registros.filter((r) => !texto || JSON.stringify(r).toLowerCase().includes(texto));
+    $('filas').innerHTML = visibles.map((r) => `<tr>${VISTAS[ver].fila(r).join('')}</tr>`).join('');
+    cargarFotos($('filas'));
+    $('vacio').hidden = visibles.length > 0;
+    $('conteo').textContent =
+      `${visibles.length} ${visibles.length === 1 ? 'registro' : 'registros'}` +
+      (texto ? ` de ${registros.length}` : '');
+  }
+
+  document.querySelectorAll('.pestana').forEach((pestana) => {
+    pestana.addEventListener('click', () => {
+      ver = pestana.dataset.ver;
+      cargar();
+    });
+  });
+  $('filtro').addEventListener('input', pintar);
+
+  // ---------- Registrar incidente en una entrega (RF23) ----------
+  const form = $('form-incidente');
+  let entregaElegida = null;
+  let dueno = null;
+  const buscadorDueno = crearBuscarPersona($('dueno'), {
+    // Al cambiar el dueño real se borra el error anterior, que ya no aplica.
+    alSeleccionar: (persona) => {
+      dueno = persona;
+      ocultarMensaje($('error-incidente'));
+    },
+    alCambiar: () => {
+      dueno = null;
+      ocultarMensaje($('error-incidente'));
+    },
+  });
+
+  const panel = $('panel-incidente');
+
+  function cerrarIncidente() {
+    panel.hidden = true;
+    entregaElegida = null;
+  }
+
+  $('filas').addEventListener('click', (evento) => {
+    const boton = evento.target.closest('[data-incidente]');
+    if (!boton) return;
+    entregaElegida = registros.find((e) => e.id === Number(boton.dataset.incidente));
+    const e = entregaElegida;
+    $('resumen-entrega').innerHTML =
+      `Entrega de <strong>${escapar(e.reclamacion.objeto.tipo)}</strong> a <strong>${escapar(e.reclamacion.persona.nombre)}</strong> ` +
+      `el ${fechaHora(e.fecha_hora)} (reclamación N.º ${e.reclamacion.id}).`;
+    form.reset();
+    buscadorDueno.reiniciar();
+    dueno = null;
+    ocultarMensaje($('error-incidente'));
+    ocultarMensaje($('ok'));
+    panel.hidden = false;
+    panel.scrollIntoView({ behavior: 'smooth' });
+    $('inc-como').focus({ preventScroll: true });
+  });
+
+  $('cancelar-incidente').addEventListener('click', cerrarIncidente);
+
+  form.addEventListener('submit', async (evento) => {
+    evento.preventDefault();
+    const error = $('error-incidente');
+    ocultarMensaje(error);
+    const datos = {
+      como_lo_obtuvo: form.elements.como_lo_obtuvo.value.trim(),
+      medida_mejora: form.elements.medida_mejora.value.trim(),
+      propietario_real_id: dueno?.id ?? null,
+    };
+    if (!datos.como_lo_obtuvo || !datos.medida_mejora) {
+      mostrarMensaje(error, 'Completa cómo lo obtuvo y la medida para evitarlo.');
+      return;
+    }
+    await conBoton(evento.submitter, 'Registrando…', async () => {
+      try {
+        await api(`/entregas/${entregaElegida.id}/incidente`, { metodo: 'POST', datos });
+        await cargar();
+        mostrarMensaje($('ok'), 'Incidente registrado. Puedes verlo en el filtro "Incidentes".');
+        window.scrollTo({ top: 0 });
+      } catch (e) {
+        mostrarMensaje(error, e.message);
+      }
+    });
+  });
+
+  cargar();
+</script>
+
+<style>
+  /* Miniatura de la foto de la entrega dentro de la tabla. */
+  .tabla :global(.celda-foto img) {
+    max-height: 70px;
+    margin: 0;
+  }
+</style>

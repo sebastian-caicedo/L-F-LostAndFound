@@ -2,7 +2,7 @@
 
 Sistema web para la **gestión de objetos perdidos y encontrados en una institución universitaria**. El encargado registra estudiantes, docentes y objetos (con foto), gestiona reclamaciones, compara la información del reclamante con las características del objeto y decide si aprueba o rechaza. Cada decisión y cada entrega quedan registradas con trazabilidad completa.
 
-**Estado:** MVP en desarrollo (Fase 4 — frontend) · **Inicio:** 24/08/2026 · **Metodología:** Scrum con tablero Kanban
+**Estado:** MVP en desarrollo (Fase 5 — integración) · **Inicio:** 24/08/2026 · **Metodología:** Scrum con tablero Kanban
 
 ## Problema que resuelve
 
@@ -252,7 +252,8 @@ La interfaz queda disponible en `http://localhost:4321`. Ingresa con el usuario 
 | Personas | Pestañas (todas, estudiantes, docentes), búsqueda, marca de alerta y registro de personas. No se editan ni se borran | RF02, RF19, RF24 | Lista |
 | Personas → Detalle | Datos, alerta, reportes de pérdida, reclamaciones con su decisión y objetos que se ha llevado | RF17, RF18, RF24 | Lista |
 | Pendientes | Reclamaciones por decidir (la más antigua primero) y aprobadas por entregar, con el botón para retomarlas en el mostrador | RF08, RF15 | Lista |
-| Historial, Alertas | Filtros del historial y personas con alerta | RF17, RF18, RF24 | Entrega 4 |
+| Historial | Filtros de reportes (abiertos, recuperados, vencidos), reclamaciones (pendientes, aprobadas, rechazadas), entregas e incidentes. Filtro por persona u objeto. Registrar un incidente en una entrega | RF17, RF18, RF23, RF29 | Lista |
+| Alertas | Personas con reclamaciones rechazadas de objetos distintos, con el motivo de cada rechazo | RF24 | Lista |
 
 ## API
 
@@ -316,7 +317,7 @@ Pendiente (Fase 6 de la hoja de ruta). Las pruebas cubrirán autenticación y pe
 | 1 | Repositorio y entorno de desarrollo | Completada |
 | 2 | Diseño de la base de datos | Completada |
 | 3 | Backend | Completada |
-| 4 | Frontend | En curso |
+| 4 | Frontend | Completada |
 | 5 | Integración | Pendiente |
 | 6 | Calidad y pruebas | Pendiente |
 | 7 | Documentación y entrega | Pendiente |

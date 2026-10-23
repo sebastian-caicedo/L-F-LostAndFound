@@ -1,10 +1,92 @@
 ---
-/* Pantalla provisional: se construye en la entrega 4 de la Fase 4. */
+/*
+  Alertas: personas con muchas reclamaciones rechazadas de objetos distintos (RF24).
+
+  La alerta no bloquea a nadie ni decide nada: solo avisa al encargado para
+  que verifique con más cuidado. Se cuentan objetos DISTINTOS porque reclamar
+  varias veces el mismo objeto puede ser un dueño insistente, mientras que
+  intentar con muchos objetos diferentes es el patrón de quien prueba suerte.
+  El número de rechazos que la activa se configura en el backend
+  (UMBRAL_ALERTA_RECHAZOS en el .env, por defecto 3).
+
+  Para cada persona se muestran sus reclamaciones rechazadas con el motivo,
+  para que el encargado vea por qué se rechazaron.
+
+  Endpoints: GET /personas/alertas, GET /historial/reclamaciones?persona_id&estado=RECHAZADA
+*/
 import App from '../layouts/App.astro';
-import EnConstruccion from '../components/EnConstruccion.astro';
 ---
 
 <App titulo="Alertas" seccion="/alertas">
-  <h1>Alertas</h1>
-  <EnConstruccion entrega={4} descripcion="Personas con 3 o más reclamaciones rechazadas de objetos distintos." />
+  <h1>Alertas de intentos fallidos</h1>
+  <div class="caja-info">
+    Personas con varias reclamaciones <strong>rechazadas de objetos distintos</strong>. La alerta no impide que
+    reclamen: aparece en rojo en el mostrador para que verifiques con especial cuidado. La decisión sigue siendo tuya.
+  </div>
+
+  <p id="error" class="mensaje-error" role="alert" hidden></p>
+  <p id="conteo" class="conteo"></p>
+  <p id="vacio" class="tarjeta texto-suave" hidden>Ninguna persona tiene alerta.</p>
+  <div id="lista"></div>
 </App>
+
+<script>
+  import { api } from '../lib/api.js';
+  import { NOMBRE_TIPO } from '../lib/persona.js';
+  import { enlaceObjeto } from '../lib/objetos.js';
+  import { $, escapar, fechaHora, mostrarMensaje } from '../lib/ui.js';
+
+  async function cargar() {
+    $('conteo').textContent = 'Cargando…';
+    try {
+      const alertas = await api('/personas/alertas');
+      // Las reclamaciones rechazadas de cada persona, todas a la vez.
+      const rechazadas = await Promise.all(
+        alertas.map(({ persona }) => api(`/historial/reclamaciones?persona_id=${persona.id}&estado=RECHAZADA`)),
+      );
+
+      $('conteo').textContent = `${alertas.length} ${alertas.length === 1 ? 'persona' : 'personas'} con alerta`;
+      $('vacio').hidden = alertas.length > 0;
+      $('lista').innerHTML = alertas
+        .map(({ persona: p, alerta }, i) => `
+          <section class="tarjeta seccion">
+            <div class="persona-cabecera">
+              <div>
+                <strong>${escapar(p.nombre)}</strong>
+                <span class="etiqueta etiqueta-tipo">${NOMBRE_TIPO[p.tipo]}</span>
+                <span class="etiqueta etiqueta-alerta">${alerta.rechazos_objetos_distintos} objetos distintos rechazados</span>
+              </div>
+              <a class="boton boton-secundario" href="/personas/detalle?id=${p.id}">Ver persona</a>
+            </div>
+            <dl class="datos">
+              ${p.codigo ? `<dt>Código</dt><dd>${escapar(p.codigo)}</dd>` : ''}
+              <dt>Correo</dt><dd>${escapar(p.correo)}</dd>
+              <dt>Teléfono</dt><dd>${escapar(p.telefono)}</dd>
+            </dl>
+            <div class="envoltura-tabla" style="margin-top:12px">
+              <table class="tabla">
+                <thead><tr><th>N.º</th><th>Fecha</th><th>Objeto</th><th>Describió</th><th>Motivo del rechazo</th></tr></thead>
+                <tbody>
+                  ${rechazadas[i]
+                    .map((r) => `
+                      <tr>
+                        <td class="numero-col">${r.id}</td>
+                        <td>${fechaHora(r.fecha_creacion)}</td>
+                        <td>${enlaceObjeto(r.objeto)}</td>
+                        <td>${r.informacion ? escapar(r.informacion.caracteristicas) : '—'}</td>
+                        <td>${escapar(r.decision.motivo)}<br><span class="texto-suave">${escapar(r.decision.encargado.nombre)} · ${fechaHora(r.decision.fecha_hora)}</span></td>
+                      </tr>`)
+                    .join('')}
+                </tbody>
+              </table>
+            </div>
+          </section>`)
+        .join('');
+    } catch (e) {
+      $('conteo').textContent = '';
+      mostrarMensaje($('error'), e.message);
+    }
+  }
+
+  cargar();
+</script>
