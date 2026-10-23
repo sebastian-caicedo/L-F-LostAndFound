@@ -1,0 +1,22 @@
+---
+/*
+  Indicador de pasos de un flujo del mostrador ("1 Persona · 2 Objeto ...").
+  El paso actual se marca en azul y los terminados con un fondo más claro.
+  Lo controla lib/pasos.js.
+*/
+interface Props {
+  pasos: string[];
+}
+
+const { pasos } = Astro.props;
+---
+
+<ol class="pasos" aria-label="Pasos">
+  {
+    pasos.map((nombre, i) => (
+      <li data-indicador={i + 1} class:list={[{ actual: i === 0 }]}>
+        <span class="numero">{i + 1}</span> {nombre}
+      </li>
+    ))
+  }
+</ol>

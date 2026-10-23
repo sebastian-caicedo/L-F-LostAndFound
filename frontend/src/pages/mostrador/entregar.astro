@@ -1,10 +1,192 @@
 ---
-/* Pantalla provisional: se construye en la entrega 2 de la Fase 4. */
+/*
+  Mostrador → "Entrega un objeto": alguien trae algo que encontró en el campus.
+
+  Paso 1. Datos del objeto      → POST /objetos/encontrados        (RF04)
+  Paso 2. Foto (opcional)       → PUT  /objetos/{id}/foto          (RF20)
+  Paso 3. Listo + coincidencias → GET  /objetos/{id}/coincidencias (RF05, RF28)
+
+  En el paso 3 aparecen los reportes de pérdida abiertos de la misma
+  categoría, con el teléfono y el correo de quien lo reportó, para avisarle.
+*/
 import App from '../../layouts/App.astro';
-import EnConstruccion from '../../components/EnConstruccion.astro';
+import Pasos from '../../components/Pasos.astro';
+import SelectorFoto from '../../components/SelectorFoto.astro';
+import { CATEGORIAS } from '../../lib/objetos.js';
 ---
 
 <App titulo="Entrega un objeto" seccion="/">
   <h1>Entrega un objeto</h1>
-  <EnConstruccion entrega={2} descripcion="Registrar el objeto encontrado con su foto y ver los reportes de pérdida que coinciden." />
+  <p class="ayuda">Alguien encontró un objeto en el campus y lo trae al mostrador.</p>
+
+  <Pasos pasos={['Datos del objeto', 'Foto', 'Listo']} />
+
+  <!-- Paso 1 -->
+  <section data-paso="1" class="tarjeta">
+    <h2>Datos del objeto</h2>
+    <form id="form-objeto" novalidate>
+      <div class="dos-columnas">
+        <div class="campo">
+          <label for="tipo">Tipo de objeto</label>
+          <input id="tipo" name="tipo" type="text" list="categorias" maxlength="50" placeholder="Ej.: Celular" />
+          <datalist id="categorias">{CATEGORIAS.map((c) => <option value={c} />)}</datalist>
+        </div>
+        <div class="campo">
+          <label for="descripcion">Descripción general</label>
+          <input id="descripcion" name="descripcion" type="text" maxlength="2000" placeholder="Lo que se ve a simple vista" />
+        </div>
+        <div class="campo campo-ancho">
+          <label for="caracteristicas">Características que solo el dueño conocería</label>
+          <textarea id="caracteristicas" name="caracteristicas" maxlength="2000" placeholder="Marcas, rayones, stickers, contenido, color del forro…"></textarea>
+          <span class="texto-suave">No se muestran en la lista de objetos: sirven para verificar al dueño cuando venga a reclamar.</span>
+        </div>
+        <div class="campo">
+          <label for="lugar">Lugar donde se encontró (opcional)</label>
+          <input id="lugar" name="lugar_encontrado" type="text" maxlength="150" placeholder="Ej.: Biblioteca, segundo piso" />
+        </div>
+        <div class="campo">
+          <label for="fecha">Fecha en que se encontró</label>
+          <input id="fecha" name="fecha_encontrado" type="date" />
+        </div>
+      </div>
+      <p id="error-objeto" class="mensaje-error" role="alert" hidden></p>
+      <div class="acciones">
+        <button type="submit" class="boton boton-principal">Registrar objeto</button>
+        <a class="boton boton-secundario" href="/">Cancelar</a>
+      </div>
+    </form>
+  </section>
+
+  <!-- Paso 2 -->
+  <section data-paso="2" class="tarjeta" hidden>
+    <h2>Foto del objeto</h2>
+    <p class="ayuda">
+      Una foto ayuda a reconocer el objeto en la comparación. No se le muestra a quien reclama antes de que lo describa.
+    </p>
+    <SelectorFoto id="foto-objeto" />
+    <p id="error-foto" class="mensaje-error" role="alert" hidden></p>
+    <div class="acciones">
+      <button type="button" id="guardar-foto" class="boton boton-principal">Guardar foto</button>
+      <button type="button" id="sin-foto" class="boton boton-secundario">Continuar sin foto</button>
+    </div>
+  </section>
+
+  <!-- Paso 3 -->
+  <section data-paso="3" hidden>
+    <div class="caja-ok">
+      <h2>Objeto registrado</h2>
+      <p id="resumen-registro"></p>
+    </div>
+
+    <div class="tarjeta">
+      <h2>Reportes de pérdida que coinciden</h2>
+      <p class="ayuda">
+        Personas que reportaron un objeto de la misma categoría. Puedes contactarlas para que vengan a reclamarlo.
+      </p>
+      <p id="sin-coincidencias" class="texto-suave" hidden>
+        No hay reportes de pérdida abiertos de esta categoría.
+      </p>
+      <p id="error-coincidencias" class="mensaje-error" role="alert" hidden></p>
+      <ul id="coincidencias" class="lista-elegir"></ul>
+    </div>
+
+    <div class="acciones">
+      <a class="boton boton-principal" href="/">Atender a otra persona</a>
+    </div>
+  </section>
 </App>
+
+<script>
+  import { api } from '../../lib/api.js';
+  import { crearPasos } from '../../lib/pasos.js';
+  import { crearSelectorFoto } from '../../lib/foto.js';
+  import { htmlDatosObjeto } from '../../lib/objetos.js';
+  import { $, escapar, hoy, mostrarMensaje, ocultarMensaje, conBoton } from '../../lib/ui.js';
+
+  const pasos = crearPasos();
+  const selector = crearSelectorFoto($('foto-objeto'));
+  let objeto = null;
+  let conFoto = false;
+
+  // La fecha no puede ser futura: el backend también lo valida.
+  $('fecha').value = hoy();
+  $('fecha').max = hoy();
+
+  // ---------- Paso 1: registrar el objeto (RF04) ----------
+  $('form-objeto').addEventListener('submit', async (evento) => {
+    evento.preventDefault();
+    const error = $('error-objeto');
+    ocultarMensaje(error);
+    const f = evento.target.elements;
+    const datos = {
+      tipo: f.tipo.value.trim(),
+      descripcion: f.descripcion.value.trim(),
+      caracteristicas: f.caracteristicas.value.trim(),
+      lugar_encontrado: f.lugar_encontrado.value.trim() || null,
+      fecha_encontrado: f.fecha_encontrado.value || null,
+    };
+    if (!datos.tipo || !datos.descripcion || !datos.caracteristicas) {
+      mostrarMensaje(error, 'Completa el tipo, la descripción y las características.');
+      return;
+    }
+    await conBoton(evento.submitter, 'Registrando…', async () => {
+      try {
+        objeto = await api('/objetos/encontrados', { metodo: 'POST', datos });
+        pasos.ir(2);
+      } catch (e) {
+        mostrarMensaje(error, e.message);
+      }
+    });
+  });
+
+  // ---------- Paso 2: foto opcional (RF20) ----------
+  $('guardar-foto').addEventListener('click', async (evento) => {
+    const error = $('error-foto');
+    ocultarMensaje(error);
+    const foto = selector.obtener();
+    if (!foto) {
+      mostrarMensaje(error, 'Toma o sube una foto, o presiona "Continuar sin foto".');
+      return;
+    }
+    const datos = new FormData();
+    datos.append('foto', foto, 'foto.jpg');
+    await conBoton(evento.currentTarget, 'Guardando…', async () => {
+      try {
+        objeto = await api(`/objetos/${objeto.id}/foto`, { metodo: 'PUT', datos });
+        conFoto = true;
+        await terminar();
+      } catch (e) {
+        mostrarMensaje(error, e.message);
+      }
+    });
+  });
+
+  $('sin-foto').addEventListener('click', () => terminar());
+
+  // ---------- Paso 3: confirmación y coincidencias (RF05, RF28) ----------
+  async function terminar() {
+    selector.limpiar(); // apaga la cámara si quedó encendida
+    $('resumen-registro').innerHTML =
+      `<strong>${escapar(objeto.tipo)}</strong> — ${escapar(objeto.descripcion)}. ` +
+      `Quedó <strong>disponible</strong> con el número ${objeto.id}` +
+      (conFoto ? ' y con foto.' : ', sin foto (se puede agregar después desde Objetos).');
+    pasos.ir(3);
+
+    try {
+      const lista = await api(`/objetos/${objeto.id}/coincidencias`);
+      $('sin-coincidencias').hidden = lista.length > 0;
+      $('coincidencias').innerHTML = lista
+        .map(({ objeto: reporte, reportado_por: p }) => `
+          <li class="tarjeta">
+            <div class="persona-cabecera">
+              <strong>${escapar(p.nombre)}</strong>
+              <span class="texto-suave">${escapar(p.telefono)} · ${escapar(p.correo)}</span>
+            </div>
+            ${htmlDatosObjeto(reporte)}
+          </li>`)
+        .join('');
+    } catch (e) {
+      mostrarMensaje($('error-coincidencias'), e.message);
+    }
+  }
+</script>

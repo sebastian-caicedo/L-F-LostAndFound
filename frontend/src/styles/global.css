@@ -189,3 +189,367 @@ a:focus-visible {
   border-radius: var(--radio-tarjeta);
   padding: 20px;
 }
+
+/* El atributo hidden siempre oculta, aunque la clase tenga display: flex o grid. */
+[hidden] {
+  display: none !important;
+}
+
+.texto-suave {
+  color: var(--texto-suave);
+}
+
+.ayuda {
+  color: var(--texto-suave);
+  margin: 0 0 16px;
+}
+
+.acciones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.tarjeta + .tarjeta,
+.tarjeta-interna {
+  margin-top: 16px;
+}
+
+.dos-columnas {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0 16px;
+}
+
+.campo-ancho {
+  grid-column: 1 / -1;
+}
+
+textarea {
+  min-height: 90px;
+  resize: vertical;
+}
+
+fieldset {
+  border: none;
+  margin: 0 0 14px;
+  padding: 0;
+}
+
+legend {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--azul-oscuro);
+  margin-bottom: 4px;
+}
+
+.grupo-radio label {
+  margin-right: 20px;
+  cursor: pointer;
+}
+
+/* ---------- Indicador de pasos de los flujos del mostrador ---------- */
+
+.pasos {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  list-style: none;
+  padding: 0;
+  margin: 0 0 20px;
+}
+
+.pasos li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px 6px 6px;
+  border-radius: 999px;
+  background: var(--blanco);
+  border: 1px solid var(--borde);
+  color: var(--texto-suave);
+  font-size: 0.9rem;
+}
+
+.pasos .numero {
+  display: inline-grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--azul-claro);
+  color: var(--azul-oscuro);
+  font-weight: 700;
+  font-size: 0.8rem;
+}
+
+.pasos li.actual {
+  background: var(--azul);
+  border-color: var(--azul);
+  color: var(--blanco);
+  font-weight: 600;
+}
+
+.pasos li.actual .numero {
+  background: var(--blanco);
+  color: var(--azul);
+}
+
+.pasos li.hecho {
+  background: var(--azul-claro);
+  color: var(--azul-oscuro);
+}
+
+/* ---------- Etiquetas de estado ---------- */
+
+.etiqueta {
+  display: inline-block;
+  font-size: 0.78rem;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--azul-claro);
+  color: var(--azul-oscuro);
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+.etiqueta-disponible,
+.etiqueta-recuperado,
+.etiqueta-aprobada {
+  background: var(--verde-fondo);
+  color: var(--verde);
+}
+
+.etiqueta-entregado,
+.etiqueta-vencido {
+  background: #eceff3;
+  color: #4a5565;
+}
+
+.etiqueta-rechazada,
+.etiqueta-alerta {
+  background: var(--rojo-fondo);
+  color: var(--rojo);
+}
+
+.etiqueta-pendiente,
+.etiqueta-perdido {
+  background: #fff4dd;
+  color: #8a5300;
+}
+
+/* ---------- Cajas de aviso ---------- */
+
+.caja-alerta {
+  background: var(--rojo-fondo);
+  border: 1px solid var(--rojo-borde);
+  border-left: 5px solid var(--rojo);
+  color: var(--rojo);
+  border-radius: var(--radio);
+  padding: 12px 14px;
+  margin-bottom: 14px;
+}
+
+.caja-info {
+  background: var(--azul-claro);
+  border: 1px solid var(--borde);
+  border-left: 5px solid var(--azul);
+  border-radius: var(--radio);
+  padding: 12px 14px;
+  margin-bottom: 14px;
+}
+
+.caja-ok {
+  background: var(--verde-fondo);
+  border: 1px solid #b6dfc2;
+  border-left: 5px solid var(--verde);
+  border-radius: var(--radio);
+  padding: 14px 16px;
+  margin-bottom: 16px;
+}
+
+.caja-ok h2 {
+  color: var(--verde);
+}
+
+/* ---------- Listas para elegir (personas, objetos) ---------- */
+
+.lista-elegir {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 14px;
+  display: grid;
+  gap: 8px;
+}
+
+.elegir {
+  font: inherit;
+  width: 100%;
+  text-align: left;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 12px;
+  padding: 10px 14px;
+  background: var(--blanco);
+  border: 1px solid var(--borde);
+  border-radius: var(--radio);
+  cursor: pointer;
+  color: var(--texto);
+}
+
+.elegir:hover {
+  border-color: var(--azul);
+  background: var(--azul-muy-claro);
+}
+
+.elegir.elegido {
+  border: 2px solid var(--azul);
+  background: var(--azul-claro);
+}
+
+.elegir-titulo {
+  font-weight: 600;
+  color: var(--azul-oscuro);
+}
+
+.elegir-detalle {
+  color: var(--texto-suave);
+  font-size: 0.9rem;
+  flex-basis: 100%;
+}
+
+/* ---------- Búsqueda de persona ---------- */
+
+.fila-busqueda {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+}
+
+.campo-crece {
+  flex: 1;
+}
+
+.fila-busqueda .boton {
+  margin-bottom: 14px;
+}
+
+.persona-cabecera {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.persona-cabecera strong {
+  font-size: 1.1rem;
+  color: var(--azul-oscuro);
+  margin-right: 8px;
+}
+
+/* Lista de datos "nombre: valor" */
+.datos {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 4px 14px;
+  margin: 0;
+}
+
+.datos dt {
+  font-weight: 600;
+  color: var(--texto-suave);
+}
+
+.datos dd {
+  margin: 0;
+  white-space: pre-wrap;
+}
+
+/* ---------- Selector de foto ---------- */
+
+.selector-botones {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.ayuda-foto {
+  color: var(--texto-suave);
+  font-size: 0.85rem;
+  margin: 6px 0 0;
+}
+
+.selector-camara video,
+.selector-vista img {
+  display: block;
+  width: 100%;
+  max-width: 420px;
+  border-radius: var(--radio);
+  border: 1px solid var(--borde);
+  background: #000;
+  margin-bottom: 10px;
+}
+
+.selector-vista img {
+  background: var(--blanco);
+}
+
+.selector-acciones {
+  display: flex;
+  gap: 10px;
+}
+
+.selector-foto .mensaje-error {
+  margin-top: 8px;
+}
+
+/* ---------- Comparación lado a lado ---------- */
+
+.comparacion {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.comparacion .tarjeta {
+  margin-top: 0;
+}
+
+.comparacion h3 {
+  border-bottom: 1px solid var(--borde);
+  padding-bottom: 6px;
+  margin-bottom: 10px;
+}
+
+.foto-objeto {
+  display: block;
+  max-width: 100%;
+  max-height: 260px;
+  border-radius: var(--radio);
+  border: 1px solid var(--borde);
+  margin-top: 10px;
+}
+
+.caja-entrega-previa {
+  background: #fff4dd;
+  border: 1px solid #f0cf8f;
+  border-left: 5px solid #c77700;
+  border-radius: var(--radio);
+  padding: 14px 16px;
+  margin: 16px 0;
+}
+
+.caja-entrega-previa h3 {
+  color: #8a5300;
+}
+
+@media (max-width: 760px) {
+  .dos-columnas,
+  .comparacion {
+    grid-template-columns: 1fr;
+  }
+}

@@ -1,10 +1,604 @@
 ---
-/* Pantalla provisional: se construye en la entrega 2 de la Fase 4. */
+/*
+  Mostrador → "Viene a reclamar": una persona dice que un objeto es suyo.
+
+  Paso 1. Persona             → buscar o registrar; alerta en rojo (RF02, RF19, RF24).
+  Paso 2. Objeto              → elegir un objeto encontrado, sin ver sus
+                                características; vincular su reporte de pérdida
+                                si lo tiene → POST /reclamaciones (RF06, RF27).
+  Paso 3. Descripción a ciegas→ lo que la persona describe ANTES de ver nada
+                                → POST /reclamaciones/{id}/informacion (RF07, RF21).
+  Paso 4. Comparar y decidir  → GET /reclamaciones/{id}/comparacion (RF09, RF26)
+                                → POST /reclamaciones/{id}/decision (RF10–RF14).
+  Paso 5. Entrega             → foto obligatoria + observaciones
+                                → POST /reclamaciones/{id}/entrega (RF15, RF16, RF22).
+
+  Se puede llegar con parámetros en la dirección:
+  - ?reclamacion=ID  retoma una reclamación (desde Pendientes) en el paso que le toca.
+  - ?persona=ID&objeto=ID&reporte=ID  viene de "Perdió algo" con todo elegido.
+*/
 import App from '../../layouts/App.astro';
-import EnConstruccion from '../../components/EnConstruccion.astro';
+import Pasos from '../../components/Pasos.astro';
+import BuscarPersona from '../../components/BuscarPersona.astro';
+import SelectorFoto from '../../components/SelectorFoto.astro';
 ---
 
 <App titulo="Viene a reclamar" seccion="/">
   <h1>Viene a reclamar</h1>
-  <EnConstruccion entrega={2} descripcion="Persona, objeto, descripción a ciegas, comparación y decisión, y entrega con foto." />
+  <p class="ayuda">Una persona dice que un objeto es suyo. Tú decides después de comparar.</p>
+
+  <Pasos pasos={['Persona', 'Objeto', 'Descripción', 'Comparar y decidir', 'Entrega']} />
+
+  <p id="error-general" class="mensaje-error" role="alert" hidden></p>
+
+  <!-- Paso 1: persona -->
+  <section data-paso="1" class="tarjeta">
+    <h2>¿Quién reclama?</h2>
+    <BuscarPersona id="persona" />
+    <div class="acciones">
+      <button type="button" id="continuar-1" class="boton boton-principal" disabled>Continuar</button>
+      <a class="boton boton-secundario" href="/">Cancelar</a>
+    </div>
+  </section>
+
+  <!-- Paso 2: objeto -->
+  <section data-paso="2" class="tarjeta" hidden>
+    <h2>¿Qué objeto reclama?</h2>
+    <p class="ayuda">
+      La lista no muestra las características ni la foto: la persona debe describirlas en el siguiente paso sin
+      haberlas visto.
+    </p>
+    <form id="form-filtro" class="fila-busqueda" novalidate>
+      <div class="campo campo-crece">
+        <label for="buscar-objeto">Buscar en la descripción</label>
+        <input id="buscar-objeto" type="search" placeholder="Ej.: celular, negro…" />
+      </div>
+      <button type="submit" class="boton boton-secundario">Buscar</button>
+    </form>
+    <label class="opcion-check">
+      <input type="checkbox" id="incluir-entregados" />
+      Incluir objetos ya entregados (para comparar si alguien se llevó algo que no era suyo)
+    </label>
+    <p id="error-objetos" class="mensaje-error" role="alert" hidden></p>
+    <p id="sin-objetos" class="texto-suave" hidden>No hay objetos que coincidan con la búsqueda.</p>
+    <ul id="lista-objetos" class="lista-elegir lista-objetos"></ul>
+
+    <div id="zona-reporte" hidden>
+      <h3>¿Esta persona había reportado la pérdida?</h3>
+      <p class="ayuda">Si lo reportó antes, su reporte se usa como una descripción más y se cierra al entregarle el objeto.</p>
+      <fieldset id="opciones-reporte" class="lista-radio"></fieldset>
+    </div>
+
+    <p id="error-reclamacion" class="mensaje-error" role="alert" hidden></p>
+    <div class="acciones">
+      <button type="button" id="registrar-reclamacion" class="boton boton-principal" disabled>Registrar reclamación</button>
+      <button type="button" id="volver-1" class="boton boton-secundario">Volver</button>
+    </div>
+  </section>
+
+  <!-- Paso 3: descripción a ciegas -->
+  <section data-paso="3" class="tarjeta" hidden>
+    <h2>Descripción de la persona</h2>
+    <div class="caja-info">
+      Pídele a la persona que describa el objeto <strong>sin mostrárselo</strong>: color, marcas, contenido, dónde lo
+      perdió. Escribe lo que diga. Esta descripción se guarda una sola vez y no se puede cambiar después de ver la foto.
+    </div>
+    <p class="texto-suave" id="resumen-reclamacion"></p>
+    <form id="form-descripcion" novalidate>
+      <div class="campo">
+        <label for="desc-caracteristicas">Lo que describe la persona</label>
+        <textarea id="desc-caracteristicas" name="caracteristicas" maxlength="2000"></textarea>
+      </div>
+      <div class="campo">
+        <label for="desc-observaciones">Observaciones (opcional)</label>
+        <textarea id="desc-observaciones" name="observaciones" maxlength="2000" placeholder="Dónde y cuándo dice que lo perdió, otros detalles…"></textarea>
+      </div>
+      <p id="error-descripcion" class="mensaje-error" role="alert" hidden></p>
+      <div class="acciones">
+        <button type="submit" class="boton boton-principal">Guardar y comparar</button>
+      </div>
+    </form>
+  </section>
+
+  <!-- Paso 4: comparar y decidir -->
+  <section data-paso="4" hidden>
+    <div id="alerta-4"></div>
+    <div id="aviso-previa" class="caja-alerta" hidden></div>
+
+    <div class="comparacion">
+      <div class="tarjeta">
+        <h3>Lo que describió la persona</h3>
+        <div id="lado-persona"></div>
+      </div>
+      <div class="tarjeta">
+        <h3>Lo registrado del objeto</h3>
+        <div id="lado-objeto"></div>
+      </div>
+    </div>
+
+    <div id="zona-previa"></div>
+
+    <!-- Incidente sobre la entrega anterior (RF23, RF26) -->
+    <form id="form-incidente" class="tarjeta" novalidate hidden>
+      <h3>Registrar incidente en la entrega anterior</h3>
+      <p class="ayuda">
+        Úsalo si concluyes que el objeto se entregó a quien no era su dueño. La entrega anterior no se borra: queda
+        marcada con el incidente.
+      </p>
+      <div class="campo">
+        <label for="inc-como">¿Cómo obtuvo el objeto esa persona?</label>
+        <textarea id="inc-como" name="como_lo_obtuvo" maxlength="2000"></textarea>
+      </div>
+      <div class="campo">
+        <label for="inc-mejora">¿Qué medida evitaría que vuelva a pasar?</label>
+        <textarea id="inc-mejora" name="medida_mejora" maxlength="2000"></textarea>
+      </div>
+      <label class="opcion-check">
+        <input type="checkbox" name="es_dueno" checked />
+        <span id="texto-dueno">Quien reclama ahora es el dueño real</span>
+      </label>
+      <p id="error-incidente" class="mensaje-error" role="alert" hidden></p>
+      <div class="acciones">
+        <button type="submit" class="boton boton-principal">Registrar incidente</button>
+      </div>
+    </form>
+    <p id="ok-incidente" class="mensaje-ok" hidden>
+      Incidente registrado. Ahora cierra esta reclamación como rechazada explicando el motivo.
+    </p>
+
+    <form id="form-decision" class="tarjeta" novalidate>
+      <h3>Decisión</h3>
+      <p id="nota-aprobar" class="texto-suave" hidden>
+        No se puede aprobar: el objeto ya se entregó. Si el objeto es de esta persona, registra el incidente arriba y
+        luego rechaza esta reclamación explicando el motivo.
+      </p>
+      <fieldset class="grupo-radio">
+        <legend>Resultado</legend>
+        <label><input type="radio" name="resultado" value="APROBADA" id="radio-aprobar" /> Aprobar</label>
+        <label><input type="radio" name="resultado" value="RECHAZADA" /> Rechazar</label>
+      </fieldset>
+      <div class="campo">
+        <label for="motivo">Motivo (obligatorio)</label>
+        <textarea id="motivo" name="motivo" maxlength="2000" placeholder="Qué coincidió o qué no coincidió"></textarea>
+      </div>
+      <p id="error-decision" class="mensaje-error" role="alert" hidden></p>
+      <div class="acciones">
+        <button type="submit" class="boton boton-principal">Registrar decisión</button>
+      </div>
+    </form>
+  </section>
+
+  <!-- Paso 5: entrega -->
+  <section data-paso="5" class="tarjeta" hidden>
+    <h2>Entrega del objeto</h2>
+    <p class="mensaje-ok" id="resumen-aprobada"></p>
+    <p class="ayuda">
+      Toma una foto de la persona con el objeto como evidencia de la entrega. Es obligatoria.
+    </p>
+    <SelectorFoto id="foto-entrega" />
+    <div class="campo" style="margin-top: 14px">
+      <label for="observaciones-entrega">Observaciones (opcional)</label>
+      <textarea id="observaciones-entrega" maxlength="2000"></textarea>
+    </div>
+    <p id="error-entrega" class="mensaje-error" role="alert" hidden></p>
+    <div class="acciones">
+      <button type="button" id="registrar-entrega" class="boton boton-principal">Registrar entrega</button>
+    </div>
+  </section>
+
+  <!-- Final -->
+  <section data-paso="6" hidden>
+    <div class="caja-ok" id="final-ok">
+      <h2 id="final-titulo"></h2>
+      <p id="final-texto"></p>
+    </div>
+    <div class="acciones">
+      <a class="boton boton-principal" href="/">Atender a otra persona</a>
+    </div>
+  </section>
 </App>
+
+<script>
+  import { api } from '../../lib/api.js';
+  import { crearPasos } from '../../lib/pasos.js';
+  import { crearBuscarPersona, htmlAlerta } from '../../lib/persona.js';
+  import { crearSelectorFoto } from '../../lib/foto.js';
+  import {
+    htmlDatosObjeto,
+    htmlEntregaPrevia,
+    htmlFoto,
+    cargarFotos,
+    listarObjetos,
+    resumenObjeto,
+  } from '../../lib/objetos.js';
+  import { $, escapar, fecha, fechaHora, etiquetaEstado, mostrarMensaje, ocultarMensaje, conBoton } from '../../lib/ui.js';
+
+  const pasos = crearPasos();
+  const fotoEntrega = crearSelectorFoto($('foto-entrega'));
+
+  // Estado del flujo
+  let persona = null;
+  let objetos = [];
+  let objetoElegido = null;
+  let reportes = [];
+  let reclamacion = null;
+  let comparacion = null;
+
+  // ---------- Paso 1: persona ----------
+  const buscador = crearBuscarPersona($('persona'), {
+    alSeleccionar: (elegida) => {
+      persona = elegida;
+      $('continuar-1').disabled = false;
+    },
+    alCambiar: () => {
+      persona = null;
+      $('continuar-1').disabled = true;
+    },
+  });
+
+  $('continuar-1').addEventListener('click', () => irAObjetos());
+  $('volver-1').addEventListener('click', () => pasos.ir(1));
+
+  // ---------- Paso 2: objeto y reporte (RF06, RF27) ----------
+  async function irAObjetos({ objetoId = null, reporteId = null } = {}) {
+    objetoElegido = null;
+    $('registrar-reclamacion').disabled = true;
+    $('zona-reporte').hidden = true;
+    pasos.ir(2);
+    // Reportes de pérdida abiertos de la persona, para vincularlos.
+    try {
+      reportes = await listarObjetos({ tipo_registro: 'PERDIDO', estado: 'PERDIDO', persona_id: persona.id });
+    } catch {
+      reportes = [];
+    }
+    await cargarObjetos();
+    if (objetoId) {
+      let objeto = objetos.find((o) => o.id === objetoId);
+      if (!objeto) {
+        // Puede estar entregado: se incluyen los entregados y se busca de nuevo.
+        $('incluir-entregados').checked = true;
+        await cargarObjetos();
+        objeto = objetos.find((o) => o.id === objetoId);
+      }
+      if (objeto) elegirObjeto(objeto, reporteId);
+    }
+  }
+
+  async function cargarObjetos() {
+    ocultarMensaje($('error-objetos'));
+    const buscar = $('buscar-objeto').value.trim();
+    try {
+      const disponibles = await listarObjetos({ tipo_registro: 'ENCONTRADO', estado: 'DISPONIBLE', buscar });
+      const entregados = $('incluir-entregados').checked
+        ? await listarObjetos({ tipo_registro: 'ENCONTRADO', estado: 'ENTREGADO', buscar })
+        : [];
+      objetos = [...disponibles, ...entregados];
+    } catch (e) {
+      objetos = [];
+      mostrarMensaje($('error-objetos'), e.message);
+    }
+    $('sin-objetos').hidden = objetos.length > 0;
+    $('lista-objetos').innerHTML = objetos
+      .map((o) => `
+        <li>
+          <button type="button" class="elegir${objetoElegido?.id === o.id ? ' elegido' : ''}" data-objeto="${o.id}">
+            <span class="elegir-titulo">${escapar(o.tipo)}</span>
+            ${etiquetaEstado(o.estado)}
+            <span class="elegir-detalle">N.º ${o.id} · ${resumenObjeto(o)}</span>
+          </button>
+        </li>`)
+      .join('');
+  }
+
+  $('form-filtro').addEventListener('submit', (evento) => {
+    evento.preventDefault();
+    cargarObjetos();
+  });
+  $('incluir-entregados').addEventListener('change', () => cargarObjetos());
+
+  $('lista-objetos').addEventListener('click', (evento) => {
+    const boton = evento.target.closest('[data-objeto]');
+    if (!boton) return;
+    elegirObjeto(objetos.find((o) => o.id === Number(boton.dataset.objeto)));
+  });
+
+  function elegirObjeto(objeto, reporteId = null) {
+    objetoElegido = objeto;
+    document.querySelectorAll('#lista-objetos .elegir').forEach((b) => {
+      b.classList.toggle('elegido', Number(b.dataset.objeto) === objeto.id);
+    });
+    $('registrar-reclamacion').disabled = false;
+
+    // Opciones de reporte: "no vincular" y los reportes abiertos de la persona.
+    // Se marca el que indica la dirección o, si no, el de la misma categoría.
+    if (reportes.length === 0) {
+      $('zona-reporte').hidden = true;
+      return;
+    }
+    const mismaCategoria = (r) => {
+      const a = r.tipo.toLowerCase();
+      const b = objeto.tipo.toLowerCase();
+      return a.includes(b) || b.includes(a);
+    };
+    const sugerido = reportes.find((r) => r.id === reporteId) ?? reportes.find(mismaCategoria);
+    $('opciones-reporte').innerHTML =
+      `<legend class="solo-lector">Reporte de pérdida</legend>
+       <label><input type="radio" name="reporte" value="" ${sugerido ? '' : 'checked'} /> No vincular ningún reporte</label>` +
+      reportes
+        .map((r) => `
+          <label>
+            <input type="radio" name="reporte" value="${r.id}" ${r.id === sugerido?.id ? 'checked' : ''} />
+            <strong>${escapar(r.tipo)}</strong> — ${resumenObjeto(r)}
+          </label>`)
+        .join('');
+    $('zona-reporte').hidden = false;
+  }
+
+  $('registrar-reclamacion').addEventListener('click', async (evento) => {
+    ocultarMensaje($('error-reclamacion'));
+    const marcado = document.querySelector('input[name=reporte]:checked');
+    const datos = {
+      persona_id: persona.id,
+      objeto_id: objetoElegido.id,
+      reporte_id: marcado?.value ? Number(marcado.value) : null,
+    };
+    await conBoton(evento.currentTarget, 'Registrando…', async () => {
+      try {
+        reclamacion = await api('/reclamaciones', { metodo: 'POST', datos });
+        irADescripcion();
+      } catch (e) {
+        mostrarMensaje($('error-reclamacion'), e.message);
+      }
+    });
+  });
+
+  // ---------- Paso 3: descripción a ciegas (RF07, RF21) ----------
+  function irADescripcion() {
+    $('resumen-reclamacion').textContent =
+      `Reclamación N.º ${reclamacion.id}: ${reclamacion.persona.nombre} reclama "${reclamacion.objeto.tipo}".`;
+    pasos.ir(3);
+  }
+
+  $('form-descripcion').addEventListener('submit', async (evento) => {
+    evento.preventDefault();
+    const error = $('error-descripcion');
+    ocultarMensaje(error);
+    const f = evento.target.elements;
+    const datos = {
+      caracteristicas: f.caracteristicas.value.trim(),
+      observaciones: f.observaciones.value.trim() || null,
+    };
+    if (!datos.caracteristicas) {
+      mostrarMensaje(error, 'Escribe lo que la persona describe del objeto.');
+      return;
+    }
+    await conBoton(evento.submitter, 'Guardando…', async () => {
+      try {
+        await api(`/reclamaciones/${reclamacion.id}/informacion`, { metodo: 'POST', datos });
+        await irAComparacion();
+      } catch (e) {
+        mostrarMensaje(error, e.message);
+      }
+    });
+  });
+
+  // ---------- Paso 4: comparar y decidir (RF09–RF14, RF24, RF26) ----------
+  async function irAComparacion() {
+    comparacion = await api(`/reclamaciones/${reclamacion.id}/comparacion`);
+    const c = comparacion;
+
+    $('alerta-4').innerHTML = htmlAlerta(c.alerta);
+
+    const desc = c.descripcion_reclamante;
+    $('lado-persona').innerHTML = `
+      <dl class="datos">
+        <dt>Persona</dt><dd>${escapar(c.persona.nombre)}${c.persona.codigo ? ` (${escapar(c.persona.codigo)})` : ''}</dd>
+        <dt>Describió</dt><dd>${escapar(desc.caracteristicas)}</dd>
+        ${desc.observaciones ? `<dt>Observaciones</dt><dd>${escapar(desc.observaciones)}</dd>` : ''}
+      </dl>
+      ${c.reporte ? `
+        <h3 style="margin-top:14px">Su reporte de pérdida (${fecha(c.reporte.fecha_registro)})</h3>
+        ${htmlDatosObjeto(c.reporte)}` : ''}`;
+
+    $('lado-objeto').innerHTML =
+      htmlDatosObjeto(c.objeto) + (c.objeto.foto_url ? htmlFoto(c.objeto.foto_url, `Foto de ${c.objeto.tipo}`) : '<p class="texto-suave">Sin foto.</p>');
+
+    // Entrega previa (RF26): aviso, datos de esa entrega e incidente.
+    const previa = c.entrega_previa;
+    $('aviso-previa').hidden = !c.aviso;
+    $('aviso-previa').textContent = c.aviso ?? '';
+    $('zona-previa').innerHTML = htmlEntregaPrevia(previa);
+    $('form-incidente').hidden = !previa || Boolean(previa.incidente);
+    $('texto-dueno').textContent = `${c.persona.nombre} es el dueño real del objeto`;
+    const radioAprobar = $('radio-aprobar');
+    radioAprobar.disabled = Boolean(previa);
+    $('nota-aprobar').hidden = !previa;
+    if (previa) radioAprobar.checked = false;
+
+    cargarFotos($('lado-objeto'));
+    cargarFotos($('zona-previa'));
+    pasos.ir(4);
+  }
+
+  $('form-incidente').addEventListener('submit', async (evento) => {
+    evento.preventDefault();
+    const error = $('error-incidente');
+    ocultarMensaje(error);
+    const f = evento.target.elements;
+    const datos = {
+      como_lo_obtuvo: f.como_lo_obtuvo.value.trim(),
+      medida_mejora: f.medida_mejora.value.trim(),
+      propietario_real_id: f.es_dueno.checked ? comparacion.persona.id : null,
+    };
+    if (!datos.como_lo_obtuvo || !datos.medida_mejora) {
+      mostrarMensaje(error, 'Completa cómo lo obtuvo y la medida para evitarlo.');
+      return;
+    }
+    await conBoton(evento.submitter, 'Registrando…', async () => {
+      try {
+        await api(`/entregas/${comparacion.entrega_previa.entrega_id}/incidente`, { metodo: 'POST', datos });
+        evento.target.hidden = true;
+        $('ok-incidente').hidden = false;
+      } catch (e) {
+        mostrarMensaje(error, e.message);
+      }
+    });
+  });
+
+  $('form-decision').addEventListener('submit', async (evento) => {
+    evento.preventDefault();
+    const error = $('error-decision');
+    ocultarMensaje(error);
+    const f = evento.target.elements;
+    const resultado = f.resultado.value;
+    const motivo = f.motivo.value.trim();
+    if (!resultado) {
+      mostrarMensaje(error, 'Elige si apruebas o rechazas la reclamación.');
+      return;
+    }
+    if (!motivo) {
+      mostrarMensaje(error, 'El motivo es obligatorio: explica qué coincidió o qué no.');
+      return;
+    }
+    await conBoton(evento.submitter, 'Registrando…', async () => {
+      try {
+        reclamacion = await api(`/reclamaciones/${reclamacion.id}/decision`, {
+          metodo: 'POST',
+          datos: { resultado, motivo },
+        });
+        if (resultado === 'APROBADA') irAEntrega();
+        else
+          terminar(
+            'Reclamación rechazada',
+            `Se registró el rechazo de la reclamación N.º ${reclamacion.id} con el motivo: "${motivo}".`,
+          );
+      } catch (e) {
+        mostrarMensaje(error, e.message);
+      }
+    });
+  });
+
+  // ---------- Paso 5: entrega (RF15, RF16, RF22) ----------
+  function irAEntrega() {
+    const d = reclamacion.decision;
+    $('resumen-aprobada').textContent =
+      `Reclamación aprobada por ${d.encargado.nombre} el ${fechaHora(d.fecha_hora)}. Motivo: ${d.motivo}`;
+    pasos.ir(5);
+  }
+
+  $('registrar-entrega').addEventListener('click', async (evento) => {
+    const error = $('error-entrega');
+    ocultarMensaje(error);
+    const foto = fotoEntrega.obtener();
+    if (!foto) {
+      mostrarMensaje(error, 'La foto de la entrega es obligatoria: tómala o súbela.');
+      return;
+    }
+    const datos = new FormData();
+    datos.append('foto', foto, 'entrega.jpg');
+    const observaciones = $('observaciones-entrega').value.trim();
+    if (observaciones) datos.append('observaciones', observaciones);
+    await conBoton(evento.currentTarget, 'Registrando…', async () => {
+      try {
+        const entrega = await api(`/reclamaciones/${reclamacion.id}/entrega`, { metodo: 'POST', datos });
+        fotoEntrega.limpiar();
+        terminar(
+          'Entrega registrada',
+          `${entrega.reclamacion.persona.nombre} recibió "${entrega.reclamacion.objeto.tipo}" el ` +
+            `${fechaHora(entrega.fecha_hora)}. El objeto quedó como entregado` +
+            (reclamacion.reporte ? ' y su reporte de pérdida como recuperado.' : '.'),
+        );
+      } catch (e) {
+        mostrarMensaje(error, e.message);
+      }
+    });
+  });
+
+  function terminar(titulo, texto) {
+    $('final-titulo').textContent = titulo;
+    $('final-texto').textContent = texto;
+    pasos.ir(6);
+  }
+
+  // ---------- Llegada con parámetros en la dirección ----------
+  async function iniciar() {
+    const parametros = new URLSearchParams(window.location.search);
+    try {
+      // Retomar una reclamación desde Pendientes.
+      const idReclamacion = Number(parametros.get('reclamacion'));
+      if (idReclamacion) {
+        reclamacion = await api(`/reclamaciones/${idReclamacion}`);
+        persona = await api(`/personas/${reclamacion.persona.id}`);
+        await buscador.seleccionar(persona);
+        $('continuar-1').disabled = false;
+        if (reclamacion.estado === 'PENDIENTE' && !reclamacion.tiene_informacion) {
+          irADescripcion();
+        } else if (reclamacion.estado === 'PENDIENTE') {
+          await irAComparacion();
+        } else if (reclamacion.estado === 'APROBADA' && reclamacion.objeto.estado === 'DISPONIBLE') {
+          irAEntrega();
+        } else {
+          terminar(
+            'Esta reclamación ya está cerrada',
+            `La reclamación N.º ${reclamacion.id} está ${reclamacion.estado === 'APROBADA' ? 'aprobada y entregada' : 'rechazada'}. Puedes verla en el Historial.`,
+          );
+        }
+        return;
+      }
+
+      // Viene de "Perdió algo" con la persona, el objeto y el reporte elegidos.
+      const idPersona = Number(parametros.get('persona'));
+      if (idPersona) {
+        persona = await api(`/personas/${idPersona}`);
+        await buscador.seleccionar(persona);
+        await irAObjetos({
+          objetoId: Number(parametros.get('objeto')) || null,
+          reporteId: Number(parametros.get('reporte')) || null,
+        });
+      }
+    } catch (e) {
+      mostrarMensaje($('error-general'), e.message);
+    }
+  }
+
+  iniciar();
+</script>
+
+<style>
+  .opcion-check {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    margin: 0 0 14px;
+    cursor: pointer;
+  }
+
+  .opcion-check input {
+    margin-top: 4px;
+  }
+
+  .lista-objetos {
+    max-height: 380px;
+    overflow-y: auto;
+  }
+
+  /* Las opciones se insertan con JavaScript: necesitan :global para recibir el estilo. */
+  .lista-radio :global(label) {
+    display: block;
+    padding: 8px 12px;
+    border: 1px solid var(--borde);
+    border-radius: var(--radio);
+    background: var(--blanco);
+    margin-bottom: 6px;
+    cursor: pointer;
+  }
+
+  #form-decision,
+  #form-incidente {
+    margin-top: 16px;
+  }
+
+  #ok-incidente {
+    margin-top: 16px;
+  }
+</style>

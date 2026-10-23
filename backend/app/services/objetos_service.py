@@ -91,6 +91,7 @@ def listar(
     estado: EstadoObjeto | None = None,
     tipo: str | None = None,
     buscar: str | None = None,
+    persona_id: int | None = None,
 ) -> list[Objeto]:
     """
     Consulta los objetos registrados, del más reciente al más antiguo (RF05, HCU05).
@@ -100,6 +101,8 @@ def listar(
     - estado: PERDIDO (reportes abiertos), RECUPERADO, VENCIDO, DISPONIBLE o ENTREGADO.
     - tipo: categoría (coincidencia parcial, sin importar mayúsculas).
     - buscar: texto contenido en la descripción.
+    - persona_id: reportes de pérdida de una persona (por ejemplo, para
+      vincular su reporte abierto a una reclamación, RF27).
     """
     vencer_reportes(db)
     consulta = select(Objeto).order_by(Objeto.fecha_registro.desc(), Objeto.id.desc())
@@ -111,6 +114,8 @@ def listar(
         consulta = consulta.where(Objeto.tipo.ilike(f"%{tipo.strip()}%"))
     if buscar and buscar.strip():
         consulta = consulta.where(Objeto.descripcion.ilike(f"%{buscar.strip()}%"))
+    if persona_id is not None:
+        consulta = consulta.where(Objeto.persona_id == persona_id)
     return list(db.scalars(consulta))
 
 

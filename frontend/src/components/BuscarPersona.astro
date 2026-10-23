@@ -1,0 +1,87 @@
+---
+/*
+  Buscar o registrar a la persona que está en el mostrador (RF02, RF19, RF24).
+
+  - Busca por código estudiantil (T00000001, t1 o 1), nombre o correo.
+  - Si la persona no existe, se registra aquí mismo como estudiante o docente.
+  - Al elegirla, muestra sus datos y, si tiene la alerta de intentos fallidos,
+    un aviso en rojo.
+
+  La lógica está en lib/persona.js. La página lo activa con:
+    crearBuscarPersona(document.getElementById('<id>'), { alSeleccionar })
+*/
+interface Props {
+  id: string;
+}
+
+const { id } = Astro.props;
+---
+
+<div class="buscar-persona" id={id}>
+  <!-- 1. Búsqueda -->
+  <div data-zona-buscar>
+    <form class="fila-busqueda" data-form-buscar novalidate>
+      <div class="campo campo-crece">
+        <label for={`${id}-texto`}>Código, nombre o correo</label>
+        <input id={`${id}-texto`} type="search" data-texto autocomplete="off" placeholder="Ej.: T00000001 o Ana" />
+      </div>
+      <button type="submit" class="boton boton-principal">Buscar</button>
+    </form>
+    <p class="mensaje-error" data-error-buscar role="alert" hidden></p>
+    <p class="texto-suave" data-sin-resultados hidden></p>
+    <ul class="lista-elegir" data-resultados></ul>
+    <button type="button" class="boton boton-secundario" data-accion="nueva">+ Registrar persona nueva</button>
+  </div>
+
+  <!-- 2. Registro de una persona nueva -->
+  <form class="tarjeta tarjeta-interna" data-form-nueva novalidate hidden>
+    <h3>Registrar persona nueva</h3>
+    <fieldset class="grupo-radio">
+      <legend>Tipo</legend>
+      <label><input type="radio" name={`${id}-tipo`} value="ESTUDIANTE" checked /> Estudiante</label>
+      <label><input type="radio" name={`${id}-tipo`} value="DOCENTE" /> Docente</label>
+    </fieldset>
+    <div class="dos-columnas">
+      <div class="campo">
+        <label for={`${id}-nombre`}>Nombre completo</label>
+        <input id={`${id}-nombre`} type="text" name="nombre" maxlength="100" />
+      </div>
+      <div class="campo" data-solo-estudiante>
+        <label for={`${id}-codigo`}>Código estudiantil</label>
+        <input id={`${id}-codigo`} type="text" name="codigo" maxlength="20" placeholder="T00000000" />
+      </div>
+      <div class="campo" data-solo-estudiante>
+        <label for={`${id}-carrera`}>Carrera</label>
+        <input id={`${id}-carrera`} type="text" name="carrera" maxlength="100" />
+      </div>
+      <div class="campo">
+        <label for={`${id}-correo`}>Correo institucional</label>
+        <input id={`${id}-correo`} type="email" name="correo" maxlength="120" />
+      </div>
+      <div class="campo">
+        <label for={`${id}-telefono`}>Teléfono</label>
+        <input id={`${id}-telefono`} type="tel" name="telefono" maxlength="25" />
+      </div>
+    </div>
+    <p class="mensaje-error" data-error-nueva role="alert" hidden></p>
+    <div class="acciones">
+      <button type="submit" class="boton boton-principal">Registrar</button>
+      <button type="button" class="boton boton-secundario" data-accion="cancelar-nueva">Cancelar</button>
+    </div>
+  </form>
+
+  <!-- 3. Persona elegida -->
+  <div class="persona-elegida" data-elegida hidden>
+    <div class="caja-alerta" data-alerta role="alert" hidden></div>
+    <div class="tarjeta tarjeta-interna">
+      <div class="persona-cabecera">
+        <div>
+          <strong data-nombre></strong>
+          <span class="etiqueta etiqueta-tipo" data-tipo></span>
+        </div>
+        <button type="button" class="boton boton-secundario" data-accion="cambiar">Cambiar persona</button>
+      </div>
+      <dl class="datos" data-datos></dl>
+    </div>
+  </div>
+</div>

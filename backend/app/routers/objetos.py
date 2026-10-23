@@ -53,6 +53,7 @@ def listar_objetos(
     estado: EstadoObjeto | None = None,
     tipo: str | None = None,
     buscar: str | None = None,
+    persona_id: int | None = None,
 ):
     """
     Consulta los objetos registrados (RF05). Filtros opcionales y combinables:
@@ -60,12 +61,13 @@ def listar_objetos(
     - estado: PERDIDO (reportes abiertos), RECUPERADO, VENCIDO, DISPONIBLE o ENTREGADO.
     - tipo: categoría (celular, billetera...).
     - buscar: texto contenido en la descripción.
+    - persona_id: reportes de pérdida de una persona.
 
     La lista no muestra las características: solo aparecen en el detalle.
     Los reportes de pérdida vencen a los 15 días de registrados (RF29): pasan a
     VENCIDO, no se borran.
     """
-    return objetos_service.listar(db, tipo_registro, estado, tipo, buscar)
+    return objetos_service.listar(db, tipo_registro, estado, tipo, buscar, persona_id)
 
 
 @router.get("/{objeto_id}", response_model=ObjetoDetalle)

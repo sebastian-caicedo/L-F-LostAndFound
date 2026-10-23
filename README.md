@@ -135,8 +135,14 @@ L-F-LostAndFound/
 │   ├── src/
 │   │   ├── pages/           # Una página por pantalla (login, mostrador, objetos...)
 │   │   ├── layouts/         # Base.astro (estructura HTML) y App.astro (encabezado y menú)
-│   │   ├── components/      # Piezas reutilizables
-│   │   ├── lib/api.js       # Llamadas a la API, token de sesión y mensajes de error
+│   │   ├── components/      # Piezas reutilizables: pasos, buscar persona, selector de foto
+│   │   ├── lib/             # JavaScript compartido
+│   │   │   ├── api.js       # Llamadas a la API, token de sesión y mensajes de error
+│   │   │   ├── ui.js        # Fechas, estados, mensajes y protección del texto
+│   │   │   ├── pasos.js     # Flujos por pasos del mostrador
+│   │   │   ├── persona.js   # Buscar o registrar personas y su alerta
+│   │   │   ├── foto.js      # Cámara web o archivo
+│   │   │   └── objetos.js   # Datos, fotos y entrega previa de un objeto
 │   │   └── styles/global.css # Colores (azul y blanco) y estilos comunes
 │   ├── astro.config.mjs     # Lee PUBLIC_API_URL del .env de la raíz
 │   └── package.json
@@ -199,8 +205,6 @@ Se crean el archivo `backend/lf.db` y la carpeta `backend/uploads/` con fotos de
 
 ### 4. Frontend (Astro)
 
-En otra terminal, desde la raíz del proyecto:
-
 Con el backend encendido (paso 2), en otra terminal y desde la raíz del proyecto:
 
 ```bash
@@ -214,6 +218,19 @@ La interfaz queda disponible en `http://localhost:4321`. Ingresa con el usuario 
 - El frontend lee `PUBLIC_API_URL` del mismo `.env` de la raíz que usa el backend. Solo las variables que empiezan con `PUBLIC_` llegan al navegador.
 - Abre la aplicación con `localhost` y no con `127.0.0.1`: el backend solo acepta peticiones del origen configurado en `FRONTEND_ORIGIN` (CORS).
 - La sesión dura 8 horas o hasta que el encargado haga clic en **Cerrar sesión**.
+- Las fotos se pueden tomar con la **cámara web** o **subir desde un archivo** (JPG, PNG o WEBP, máximo 5 MB). El navegador pide permiso para usar la cámara la primera vez; solo funciona en `localhost` o con HTTPS.
+
+#### Pantallas
+
+| Pantalla | Qué hace | RF | Estado |
+|---|---|---|---|
+| Inicio de sesión | Usuario y contraseña; error en la misma pantalla | RF01 | Lista |
+| Mostrador | Tres opciones según lo que necesita la persona y contadores de lo pendiente | — | Lista |
+| Mostrador → Entrega un objeto | Datos del objeto encontrado → foto (opcional) → reportes de pérdida que coinciden, con el contacto de quien lo reportó | RF04, RF20, RF28 | Lista |
+| Mostrador → Perdió algo | Persona (y sus reportes abiertos) → datos del reporte → objetos encontrados que coinciden; desde ahí se puede reclamar | RF02, RF03, RF05, RF19, RF26, RF29 | Lista |
+| Mostrador → Viene a reclamar | Persona (con su alerta) → objeto (sin ver características) y reporte vinculado → descripción a ciegas → comparar y decidir con motivo (con la entrega previa e incidente si ya se entregó) → entrega con foto obligatoria. Se retoma con `?reclamacion=ID` | RF06–RF16, RF21–RF24, RF26, RF27 | Lista |
+| Objetos, Personas, Pendientes | Consulta, detalle y edición | RF05, RF08, RF25 | Entrega 3 |
+| Historial, Alertas | Filtros del historial y personas con alerta | RF17, RF18, RF24 | Entrega 4 |
 
 ## API
 
@@ -231,7 +248,7 @@ Todos los endpoints, excepto `/health` y `/auth/login`, requieren el token de se
 | GET | `/personas/{id}` | Datos de una persona | RF02, RF19 |
 | POST | `/objetos/perdidos` | Registra un objeto perdido | RF03 |
 | POST | `/objetos/encontrados` | Registra un objeto encontrado | RF04 |
-| GET | `/objetos` | Consulta objetos; filtros `tipo_registro`, `estado` (`PERDIDO` = reportes abiertos, `RECUPERADO`, `VENCIDO`, `DISPONIBLE`, `ENTREGADO`), `tipo` y `buscar` | RF05, RF29 |
+| GET | `/objetos` | Consulta objetos; filtros `tipo_registro`, `estado` (`PERDIDO` = reportes abiertos, `RECUPERADO`, `VENCIDO`, `DISPONIBLE`, `ENTREGADO`), `tipo`, `buscar` y `persona_id` (reportes de una persona) | RF05, RF27, RF29 |
 | GET | `/objetos/{id}` | Detalle de un objeto | RF05 |
 | PATCH | `/objetos/{id}` | Corrige datos de un objeto no entregado | RF25 |
 | PUT | `/objetos/{id}/foto` | Sube o reemplaza la foto de un objeto (JPG, PNG o WEBP, máx. 5 MB) | RF20 |

@@ -144,3 +144,23 @@ export async function iniciarSesion(usuario, contrasena) {
   guardarToken(access_token);
   return true;
 }
+
+/**
+ * Descarga una foto protegida (necesita el token) y devuelve una dirección
+ * temporal para usarla en <img src>. Las fotos no son públicas, por eso no
+ * se puede poner la ruta de la API directamente en el <img>.
+ */
+export async function apiImagen(ruta) {
+  const respuesta = await fetch(`${API_URL}${ruta}`, {
+    headers: { Authorization: `Bearer ${obtenerToken()}` },
+  });
+  if (respuesta.status === 401) {
+    cerrarSesion('vencida');
+    throw new ErrorApi('Tu sesión venció. Inicia sesión de nuevo.', 401);
+  }
+  if (!respuesta.ok) {
+    throw new ErrorApi('No se pudo cargar la foto.', respuesta.status);
+  }
+  return URL.createObjectURL(await respuesta.blob());
+}
+

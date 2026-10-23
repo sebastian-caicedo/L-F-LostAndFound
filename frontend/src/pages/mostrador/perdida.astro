@@ -1,10 +1,228 @@
 ---
-/* Pantalla provisional: se construye en la entrega 2 de la Fase 4. */
+/*
+  Mostrador → "Perdió algo": una persona viene a reportar un objeto perdido.
+
+  Paso 1. Persona              → buscar o registrar (RF02, RF19) y ver su alerta (RF24).
+                                 Se muestran sus reportes abiertos para no repetirlos.
+  Paso 2. Datos del reporte    → POST /objetos/perdidos (RF03). Vence en 15 días (RF29).
+  Paso 3. Coincidencias        → GET /objetos/{id}/coincidencias (RF05, RF26).
+
+  En el paso 3, si hay un objeto disponible que puede ser el suyo, el botón
+  "Reclamar este objeto" abre el flujo de reclamación con la persona, el
+  objeto y el reporte ya elegidos (RF27). Si el objeto ya se entregó a otra
+  persona, se muestra esa entrega para evaluar un posible fraude (RF26).
+*/
 import App from '../../layouts/App.astro';
-import EnConstruccion from '../../components/EnConstruccion.astro';
+import Pasos from '../../components/Pasos.astro';
+import BuscarPersona from '../../components/BuscarPersona.astro';
+import { CATEGORIAS } from '../../lib/objetos.js';
 ---
 
 <App titulo="Perdió algo" seccion="/">
   <h1>Perdió algo</h1>
-  <EnConstruccion entrega={2} descripcion="Identificar a la persona, registrar el reporte de pérdida y ver las coincidencias." />
+  <p class="ayuda">Una persona viene a reportar un objeto que perdió.</p>
+
+  <Pasos pasos={['Persona', 'Datos del reporte', 'Coincidencias']} />
+
+  <!-- Paso 1 -->
+  <section data-paso="1" class="tarjeta">
+    <h2>¿Quién perdió el objeto?</h2>
+    <BuscarPersona id="persona" />
+
+    <div id="reportes-abiertos" class="caja-info" hidden>
+      <strong>Esta persona ya tiene reportes abiertos:</strong>
+      <ul id="lista-reportes" class="lista-elegir"></ul>
+      <span class="texto-suave">Si es el mismo objeto, revisa sus coincidencias en vez de registrar otro reporte.</span>
+    </div>
+
+    <div class="acciones">
+      <button type="button" id="continuar-1" class="boton boton-principal" disabled>Continuar</button>
+      <a class="boton boton-secundario" href="/">Cancelar</a>
+    </div>
+  </section>
+
+  <!-- Paso 2 -->
+  <section data-paso="2" class="tarjeta" hidden>
+    <h2>Datos del reporte</h2>
+    <p class="ayuda" id="reporte-de"></p>
+    <form id="form-reporte" novalidate>
+      <div class="dos-columnas">
+        <div class="campo">
+          <label for="tipo">Tipo de objeto</label>
+          <input id="tipo" name="tipo" type="text" list="categorias" maxlength="50" placeholder="Ej.: Billetera" />
+          <datalist id="categorias">{CATEGORIAS.map((c) => <option value={c} />)}</datalist>
+        </div>
+        <div class="campo">
+          <label for="fecha">Fecha en que lo perdió</label>
+          <input id="fecha" name="fecha_reporte" type="date" />
+        </div>
+        <div class="campo campo-ancho">
+          <label for="descripcion">Descripción general</label>
+          <input id="descripcion" name="descripcion" type="text" maxlength="2000" />
+        </div>
+        <div class="campo campo-ancho">
+          <label for="caracteristicas">Características que lo identifican</label>
+          <textarea id="caracteristicas" name="caracteristicas" maxlength="2000" placeholder="Marcas, contenido, color, dónde cree que lo perdió…"></textarea>
+        </div>
+      </div>
+      <p id="error-reporte" class="mensaje-error" role="alert" hidden></p>
+      <div class="acciones">
+        <button type="submit" class="boton boton-principal">Registrar reporte</button>
+        <button type="button" id="volver-1" class="boton boton-secundario">Volver</button>
+      </div>
+    </form>
+  </section>
+
+  <!-- Paso 3 -->
+  <section data-paso="3" hidden>
+    <div class="caja-ok" id="confirmacion" hidden>
+      <h2>Reporte registrado</h2>
+      <p id="resumen-reporte"></p>
+    </div>
+
+    <div class="tarjeta">
+      <h2>Objetos encontrados que pueden ser el suyo</h2>
+      <p class="ayuda">
+        Objetos encontrados de la misma categoría. Compara tú las características con las que dio la persona: el
+        sistema no decide si es el mismo objeto.
+      </p>
+      <p id="sin-coincidencias" class="texto-suave" hidden>
+        Por ahora no hay objetos encontrados de esta categoría. Cuando alguien entregue uno, este reporte aparecerá
+        como coincidencia para avisarle.
+      </p>
+      <p id="error-coincidencias" class="mensaje-error" role="alert" hidden></p>
+      <ul id="coincidencias" class="lista-elegir"></ul>
+    </div>
+
+    <div class="acciones">
+      <a class="boton boton-principal" href="/">Atender a otra persona</a>
+    </div>
+  </section>
 </App>
+
+<script>
+  import { api } from '../../lib/api.js';
+  import { crearPasos } from '../../lib/pasos.js';
+  import { crearBuscarPersona } from '../../lib/persona.js';
+  import { htmlDatosObjeto, htmlEntregaPrevia, htmlFoto, cargarFotos, listarObjetos, resumenObjeto } from '../../lib/objetos.js';
+  import { $, escapar, fecha, hoy, mostrarMensaje, ocultarMensaje, conBoton } from '../../lib/ui.js';
+
+  const pasos = crearPasos();
+  let persona = null;
+  let reporte = null;
+  let abiertos = [];
+
+  $('fecha').value = hoy();
+  $('fecha').max = hoy();
+
+  // ---------- Paso 1: persona ----------
+  crearBuscarPersona($('persona'), {
+    alSeleccionar: async (elegida) => {
+      persona = elegida;
+      $('continuar-1').disabled = false;
+      // Reportes abiertos de esta persona (filtro persona_id).
+      try {
+        abiertos = await listarObjetos({ tipo_registro: 'PERDIDO', estado: 'PERDIDO', persona_id: persona.id });
+      } catch {
+        abiertos = [];
+      }
+      $('reportes-abiertos').hidden = abiertos.length === 0;
+      $('lista-reportes').innerHTML = abiertos
+        .map((r, i) => `
+          <li>
+            <button type="button" class="elegir" data-reporte="${i}">
+              <span class="elegir-titulo">${escapar(r.tipo)}</span>
+              <span class="elegir-detalle">${resumenObjeto(r)} · vence el ${fecha(r.vence_el)} · Ver coincidencias</span>
+            </button>
+          </li>`)
+        .join('');
+    },
+    alCambiar: () => {
+      persona = null;
+      $('continuar-1').disabled = true;
+      $('reportes-abiertos').hidden = true;
+    },
+  });
+
+  $('lista-reportes').addEventListener('click', (evento) => {
+    const boton = evento.target.closest('[data-reporte]');
+    if (!boton) return;
+    reporte = abiertos[Number(boton.dataset.reporte)];
+    $('confirmacion').hidden = true;
+    mostrarCoincidencias();
+  });
+
+  $('continuar-1').addEventListener('click', () => {
+    $('reporte-de').textContent = `Reporte de ${persona.nombre}.`;
+    pasos.ir(2);
+  });
+
+  $('volver-1').addEventListener('click', () => pasos.ir(1));
+
+  // ---------- Paso 2: registrar el reporte (RF03) ----------
+  $('form-reporte').addEventListener('submit', async (evento) => {
+    evento.preventDefault();
+    const error = $('error-reporte');
+    ocultarMensaje(error);
+    const f = evento.target.elements;
+    const datos = {
+      persona_id: persona.id,
+      tipo: f.tipo.value.trim(),
+      descripcion: f.descripcion.value.trim(),
+      caracteristicas: f.caracteristicas.value.trim(),
+      fecha_reporte: f.fecha_reporte.value || null,
+    };
+    if (!datos.tipo || !datos.descripcion || !datos.caracteristicas) {
+      mostrarMensaje(error, 'Completa el tipo, la descripción y las características.');
+      return;
+    }
+    await conBoton(evento.submitter, 'Registrando…', async () => {
+      try {
+        reporte = await api('/objetos/perdidos', { metodo: 'POST', datos });
+        $('resumen-reporte').innerHTML =
+          `<strong>${escapar(reporte.tipo)}</strong> de ${escapar(persona.nombre)}. ` +
+          `El reporte queda abierto hasta el <strong>${fecha(reporte.vence_el)}</strong>; ` +
+          'si no aparece en ese tiempo, vence (no se borra).';
+        $('confirmacion').hidden = false;
+        mostrarCoincidencias();
+      } catch (e) {
+        mostrarMensaje(error, e.message);
+      }
+    });
+  });
+
+  // ---------- Paso 3: coincidencias (RF05, RF26) ----------
+  async function mostrarCoincidencias() {
+    pasos.ir(3);
+    const lista = $('coincidencias');
+    lista.innerHTML = '';
+    ocultarMensaje($('error-coincidencias'));
+    try {
+      const coincidencias = await api(`/objetos/${reporte.id}/coincidencias`);
+      $('sin-coincidencias').hidden = coincidencias.length > 0;
+      lista.innerHTML = coincidencias.map(htmlCoincidencia).join('');
+      cargarFotos(lista);
+    } catch (e) {
+      mostrarMensaje($('error-coincidencias'), e.message);
+    }
+  }
+
+  function htmlCoincidencia({ objeto, entrega_previa }) {
+    const enlace =
+      `/mostrador/reclamar?persona=${persona.id}&objeto=${objeto.id}&reporte=${reporte.id}`;
+    const boton = objeto.estado === 'DISPONIBLE'
+      ? `<a class="boton boton-principal" href="${enlace}">Reclamar este objeto</a>`
+      : `<a class="boton boton-secundario" href="${enlace}">Reclamar para comparar</a>`;
+    return `
+      <li class="tarjeta">
+        <div class="comparacion">
+          <div>
+            ${htmlDatosObjeto(objeto)}
+            ${htmlFoto(objeto.foto_url, `Foto de ${objeto.tipo}`)}
+          </div>
+          <div>${htmlEntregaPrevia(entrega_previa)}</div>
+        </div>
+        <div class="acciones">${boton}</div>
+      </li>`;
+  }
+</script>

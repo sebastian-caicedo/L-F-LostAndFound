@@ -76,6 +76,10 @@ Authorization: Bearer {{token}}
 GET {{api}}/objetos?estado=VENCIDO
 Authorization: Bearer {{token}}
 
+### 9b. Reportes abiertos de una persona (Carlos, id 5): sombrilla y termo (RF27)
+GET {{api}}/objetos?tipo_registro=PERDIDO&estado=PERDIDO&persona_id=5
+Authorization: Bearer {{token}}
+
 ### 10. Coincidencias desde un objeto encontrado (RF28): reportes abiertos de la misma categoría
 GET {{api}}/objetos/{{encontrado.response.body.id}}/coincidencias
 Authorization: Bearer {{token}}
