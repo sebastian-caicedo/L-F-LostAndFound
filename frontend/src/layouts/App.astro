@@ -1,0 +1,180 @@
+---
+/*
+  Plantilla de las pantallas internas (todas menos el inicio de sesión).
+
+  Encabezado de dos niveles:
+  - Barra superior: nombre del sistema a la izquierda; encargado con la sesión
+    abierta y "Cerrar sesión" a la derecha.
+  - Barra del menú: las secciones del sistema; la actual se marca en blanco.
+
+  Protección de la sesión (RNF-01): si no hay token, redirige al inicio de
+  sesión antes de mostrar la página. Si el token venció, la primera petición
+  a la API responde 401 y api.js cierra la sesión.
+*/
+import Base from './Base.astro';
+
+interface Props {
+  titulo: string;
+  /** Ruta de la sección actual, para marcarla en el menú. */
+  seccion: '/' | '/objetos' | '/personas' | '/pendientes' | '/historial' | '/alertas';
+}
+
+const { titulo, seccion } = Astro.props;
+
+const menu = [
+  { ruta: '/', nombre: 'Mostrador' },
+  { ruta: '/objetos', nombre: 'Objetos' },
+  { ruta: '/personas', nombre: 'Personas' },
+  { ruta: '/pendientes', nombre: 'Pendientes' },
+  { ruta: '/historial', nombre: 'Historial' },
+  { ruta: '/alertas', nombre: 'Alertas' },
+];
+---
+
+<Base titulo={titulo}>
+  <!-- Se ejecuta antes de pintar la página: sin token, ni siquiera se muestra. -->
+  <script is:inline slot="head">
+    if (!localStorage.getItem('lf_token')) {
+      window.location.replace('/login');
+    }
+  </script>
+
+  <header>
+    <div class="barra-superior">
+      <a class="marca" href="/">
+        <span class="marca-nombre">L&F</span>
+        <span class="marca-subtitulo">Objetos perdidos y encontrados</span>
+      </a>
+      <div class="sesion">
+        <span class="encargado" id="nombre-encargado" aria-live="polite">
+          <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"></circle><path d="M4 21c0-4 4-6 8-6s8 2 8 6"></path></svg>
+          <span id="texto-encargado">Cargando…</span>
+        </span>
+        <button type="button" class="boton-salir" id="cerrar-sesion">
+          <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><path d="M16 17l5-5-5-5"></path><path d="M21 12H9"></path></svg>
+          Cerrar sesión
+        </button>
+      </div>
+    </div>
+
+    <nav class="barra-menu" aria-label="Menú principal">
+      {
+        menu.map((item) => (
+          <a
+            href={item.ruta}
+            class:list={['item-menu', { activo: item.ruta === seccion }]}
+            aria-current={item.ruta === seccion ? 'page' : undefined}
+          >
+            {item.nombre}
+          </a>
+        ))
+      }
+    </nav>
+  </header>
+
+  <main class="contenido">
+    <slot />
+  </main>
+</Base>
+
+<script>
+  import { api, cerrarSesion } from '../lib/api.js';
+
+  document.getElementById('cerrar-sesion')?.addEventListener('click', () => cerrarSesion());
+
+  // Muestra el nombre del encargado. Si el token venció, api() cierra la sesión.
+  api('/auth/me')
+    .then((encargado) => {
+      document.getElementById('texto-encargado').textContent = encargado.nombre;
+    })
+    .catch((error) => {
+      document.getElementById('texto-encargado').textContent = error.message;
+    });
+</script>
+
+<style>
+  .barra-superior {
+    background: var(--azul-oscuro);
+    color: var(--blanco);
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 10px 20px;
+  }
+
+  .marca {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    color: var(--blanco);
+    text-decoration: none;
+  }
+
+  .marca-nombre {
+    font-size: 1.25rem;
+    font-weight: 700;
+  }
+
+  .marca-subtitulo {
+    font-size: 0.85rem;
+    color: #bcd6f3;
+  }
+
+  .sesion {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    font-size: 0.9rem;
+  }
+
+  .encargado {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: #d6e7f9;
+  }
+
+  .boton-salir {
+    font: inherit;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: transparent;
+    color: var(--blanco);
+    border: 1px solid #7fb0e6;
+    border-radius: var(--radio);
+    padding: 5px 12px;
+    cursor: pointer;
+  }
+
+  .boton-salir:hover {
+    background: rgba(255, 255, 255, 0.12);
+  }
+
+  .barra-menu {
+    background: var(--azul);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    padding: 6px 14px;
+  }
+
+  .item-menu {
+    color: var(--blanco);
+    text-decoration: none;
+    padding: 6px 14px;
+    border-radius: var(--radio);
+    font-size: 0.95rem;
+  }
+
+  .item-menu:hover {
+    background: rgba(255, 255, 255, 0.15);
+  }
+
+  .item-menu.activo {
+    background: var(--blanco);
+    color: var(--azul-oscuro);
+    font-weight: 600;
+  }
+</style>

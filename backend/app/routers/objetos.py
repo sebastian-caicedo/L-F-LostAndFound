@@ -58,13 +58,12 @@ def listar_objetos(
     Consulta los objetos registrados (RF05). Filtros opcionales y combinables:
     - tipo_registro: PERDIDO o ENCONTRADO.
     - estado: PERDIDO (reportes abiertos), RECUPERADO, VENCIDO, DISPONIBLE o ENTREGADO.
-
-    Los reportes de pérdida vencen a los 15 días de registrados (RF29): pasan a
-    VENCIDO, no se borran.
     - tipo: categoría (celular, billetera...).
     - buscar: texto contenido en la descripción.
 
     La lista no muestra las características: solo aparecen en el detalle.
+    Los reportes de pérdida vencen a los 15 días de registrados (RF29): pasan a
+    VENCIDO, no se borran.
     """
     return objetos_service.listar(db, tipo_registro, estado, tipo, buscar)
 

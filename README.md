@@ -2,7 +2,7 @@
 
 Sistema web para la **gestión de objetos perdidos y encontrados en una institución universitaria**. El encargado registra estudiantes, docentes y objetos (con foto), gestiona reclamaciones, compara la información del reclamante con las características del objeto y decide si aprueba o rechaza. Cada decisión y cada entrega quedan registradas con trazabilidad completa.
 
-**Estado:** MVP en desarrollo (backend completo; siguiente: Fase 4 — frontend) · **Inicio:** 24/08/2026 · **Metodología:** Scrum con tablero Kanban
+**Estado:** MVP en desarrollo (Fase 4 — frontend) · **Inicio:** 24/08/2026 · **Metodología:** Scrum con tablero Kanban
 
 ## Problema que resuelve
 
@@ -130,10 +130,15 @@ L-F-LostAndFound/
 │   ├── seed.py              # Crea la base y carga datos de prueba
 │   ├── verificar_bd.py      # Verifica relaciones y restricciones de la base
 │   └── requirements.txt     # Dependencias de Python
-├── frontend/                # Interfaz web en Astro
-│   ├── public/              # Archivos estáticos (favicon)
-│   ├── src/pages/           # Páginas de la aplicación
-│   ├── astro.config.mjs
+├── frontend/                # Interfaz web en Astro (HTML, CSS y JavaScript, sin frameworks)
+│   ├── public/              # Archivos estáticos (ícono)
+│   ├── src/
+│   │   ├── pages/           # Una página por pantalla (login, mostrador, objetos...)
+│   │   ├── layouts/         # Base.astro (estructura HTML) y App.astro (encabezado y menú)
+│   │   ├── components/      # Piezas reutilizables
+│   │   ├── lib/api.js       # Llamadas a la API, token de sesión y mensajes de error
+│   │   └── styles/global.css # Colores (azul y blanco) y estilos comunes
+│   ├── astro.config.mjs     # Lee PUBLIC_API_URL del .env de la raíz
 │   └── package.json
 ├── docs/                    # Documentación del proyecto
 │   ├── diagramas/           # Diagramas UML
@@ -196,13 +201,19 @@ Se crean el archivo `backend/lf.db` y la carpeta `backend/uploads/` con fotos de
 
 En otra terminal, desde la raíz del proyecto:
 
+Con el backend encendido (paso 2), en otra terminal y desde la raíz del proyecto:
+
 ```bash
 cd frontend
 npm install
 npm run dev
 ```
 
-La interfaz queda disponible en `http://localhost:4321`.
+La interfaz queda disponible en `http://localhost:4321`. Ingresa con el usuario `encargado` y la contraseña de `SEED_ENCARGADO_PASSWORD`.
+
+- El frontend lee `PUBLIC_API_URL` del mismo `.env` de la raíz que usa el backend. Solo las variables que empiezan con `PUBLIC_` llegan al navegador.
+- Abre la aplicación con `localhost` y no con `127.0.0.1`: el backend solo acepta peticiones del origen configurado en `FRONTEND_ORIGIN` (CORS).
+- La sesión dura 8 horas o hasta que el encargado haga clic en **Cerrar sesión**.
 
 ## API
 
@@ -266,7 +277,7 @@ Pendiente (Fase 6 de la hoja de ruta). Las pruebas cubrirán autenticación y pe
 | 1 | Repositorio y entorno de desarrollo | Completada |
 | 2 | Diseño de la base de datos | Completada |
 | 3 | Backend | Completada |
-| 4 | Frontend | Pendiente |
+| 4 | Frontend | En curso |
 | 5 | Integración | Pendiente |
 | 6 | Calidad y pruebas | Pendiente |
 | 7 | Documentación y entrega | Pendiente |

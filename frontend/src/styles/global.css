@@ -1,0 +1,191 @@
+/*
+  Estilos globales de L&F.
+
+  Todos los colores están en variables (--azul, --texto...). Si hay que
+  cambiar un tono, se cambia aquí una sola vez y se actualiza en todas las
+  pantallas. Predominan el azul y el blanco; el rojo se usa solo para errores
+  y alertas, y el verde para confirmaciones.
+*/
+
+:root {
+  --azul-oscuro: #0c3f75;   /* barra superior */
+  --azul: #1557a0;          /* barra del menú, botones principales */
+  --azul-hover: #0f4886;
+  --azul-medio: #4a8fd8;    /* bordes de campos */
+  --azul-claro: #e8f1fb;    /* fondos suaves, tarjetas de opciones */
+  --azul-muy-claro: #f4f8fd;
+  --borde: #b9d3f0;
+  --blanco: #ffffff;
+
+  --texto: #0e2440;
+  --texto-suave: #3d5a80;
+
+  --rojo: #b42318;
+  --rojo-fondo: #fdecea;
+  --rojo-borde: #f3b4ad;
+  --verde: #1f7a3a;
+  --verde-fondo: #e8f5ec;
+
+  --radio: 8px;
+  --radio-tarjeta: 12px;
+  --fuente: system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: var(--fuente);
+  font-size: 15px;
+  line-height: 1.5;
+  color: var(--texto);
+  background: var(--azul-muy-claro);
+}
+
+h1,
+h2,
+h3 {
+  color: var(--azul-oscuro);
+  font-weight: 600;
+  margin: 0 0 0.5rem;
+}
+
+h1 { font-size: 1.5rem; }
+h2 { font-size: 1.2rem; }
+h3 { font-size: 1.05rem; }
+
+a {
+  color: var(--azul);
+}
+
+/* ---------- Formularios ---------- */
+
+/* La etiqueta va siempre ARRIBA de su campo. */
+.campo {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 14px;
+}
+
+.campo label {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--azul-oscuro);
+}
+
+input[type="text"],
+input[type="password"],
+input[type="email"],
+input[type="tel"],
+input[type="date"],
+input[type="search"],
+select,
+textarea {
+  font: inherit;
+  color: var(--texto);
+  background: var(--blanco);
+  border: 1px solid var(--azul-medio);
+  border-radius: var(--radio);
+  padding: 8px 10px;
+  min-height: 38px;
+  width: 100%;
+}
+
+input:focus,
+select:focus,
+textarea:focus,
+button:focus-visible,
+a:focus-visible {
+  outline: 3px solid #9cc3ee;
+  outline-offset: 1px;
+}
+
+/* ---------- Botones ---------- */
+
+.boton {
+  font: inherit;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 38px;
+  padding: 0 16px;
+  border-radius: var(--radio);
+  border: 1px solid var(--azul);
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.boton-principal {
+  background: var(--azul);
+  color: var(--blanco);
+}
+
+.boton-principal:hover {
+  background: var(--azul-hover);
+}
+
+.boton-secundario {
+  background: var(--blanco);
+  color: var(--azul);
+}
+
+.boton-secundario:hover {
+  background: var(--azul-claro);
+}
+
+.boton[disabled] {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+/* ---------- Mensajes en la misma pantalla (nunca ventanas emergentes) ---------- */
+
+.mensaje-error {
+  color: var(--rojo);
+  font-size: 0.9rem;
+  font-weight: 600;
+  margin: 0 0 12px;
+}
+
+.mensaje-ok {
+  color: var(--verde);
+  background: var(--verde-fondo);
+  border-radius: var(--radio);
+  padding: 10px 12px;
+  font-weight: 600;
+}
+
+/* Oculto visualmente pero disponible para lectores de pantalla. */
+.solo-lector {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+/* ---------- Tarjetas y contenedores ---------- */
+
+.contenido {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 24px 20px 40px;
+}
+
+.tarjeta {
+  background: var(--blanco);
+  border: 1px solid var(--borde);
+  border-radius: var(--radio-tarjeta);
+  padding: 20px;
+}

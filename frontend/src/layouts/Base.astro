@@ -1,0 +1,28 @@
+---
+/*
+  Estructura HTML común a todas las páginas: idioma, título, ícono y estilos.
+  La usan directamente la pantalla de inicio de sesión y, a través de
+  App.astro, todas las pantallas internas.
+*/
+import '../styles/global.css';
+
+interface Props {
+  titulo: string;
+}
+
+const { titulo } = Astro.props;
+---
+
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <title>{titulo} · L&F</title>
+    <slot name="head" />
+  </head>
+  <body>
+    <slot />
+  </body>
+</html>

@@ -1,0 +1,205 @@
+---
+/*
+  Pantalla de inicio de sesión del encargado (RF01).
+
+  - Las etiquetas "Usuario" y "Contraseña" van arriba de cada campo.
+  - El botón para ver la contraseña está al lado de su campo.
+  - Los errores se muestran en rojo dentro de la misma pantalla, nunca en
+    una ventana emergente.
+*/
+import Base from '../layouts/Base.astro';
+---
+
+<Base titulo="Iniciar sesión">
+  <!-- Si ya hay sesión abierta, se va directo al mostrador. -->
+  <script is:inline slot="head">
+    if (localStorage.getItem('lf_token')) {
+      window.location.replace('/');
+    }
+  </script>
+
+  <main class="fondo">
+    <section class="caja" aria-labelledby="titulo-login">
+      <div class="encabezado">
+        <h1 id="titulo-login">L&F</h1>
+        <p>Objetos perdidos y encontrados</p>
+      </div>
+
+      <form id="formulario" novalidate>
+        <div class="campo">
+          <label for="usuario">Usuario</label>
+          <input id="usuario" name="usuario" type="text" autocomplete="username" autofocus />
+        </div>
+
+        <div class="campo">
+          <label for="contrasena">Contraseña</label>
+          <div class="fila-contrasena">
+            <input id="contrasena" name="contrasena" type="password" autocomplete="current-password" />
+            <button
+              type="button"
+              id="ver-contrasena"
+              class="boton-ojo"
+              aria-label="Mostrar contraseña"
+              aria-pressed="false"
+              title="Mostrar contraseña"
+            >
+              <span id="icono-ojo"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"></path><circle cx="12" cy="12" r="3"></circle></svg></span>
+              <!-- El atributo hidden no funciona sobre un <svg>; por eso cada ícono va dentro de un <span>. -->
+              <span id="icono-ojo-tachado" hidden><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3l18 18"></path><path d="M10.6 6.1A9.8 9.8 0 0 1 12 6c6.5 0 10 6 10 6a17.6 17.6 0 0 1-3.2 3.9M6.6 6.6C3.8 8.4 2 12 2 12s3.5 7 10 7a9.6 9.6 0 0 0 5.4-1.6"></path><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"></path></svg></span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Aquí aparecen los errores, en rojo, sin ventanas emergentes. -->
+        <p id="error" class="mensaje-error" role="alert" hidden></p>
+
+        <button type="submit" id="entrar" class="boton boton-principal boton-entrar">Iniciar sesión</button>
+      </form>
+    </section>
+  </main>
+</Base>
+
+<script>
+  import { iniciarSesion } from '../lib/api.js';
+
+  const formulario = document.getElementById('formulario');
+  const usuario = document.getElementById('usuario');
+  const contrasena = document.getElementById('contrasena');
+  const error = document.getElementById('error');
+  const entrar = document.getElementById('entrar');
+  const verContrasena = document.getElementById('ver-contrasena');
+  const iconoOjo = document.getElementById('icono-ojo');
+  const iconoTachado = document.getElementById('icono-ojo-tachado');
+
+  function mostrarError(texto) {
+    error.textContent = texto;
+    error.hidden = false;
+  }
+
+  function ocultarError() {
+    error.hidden = true;
+    error.textContent = '';
+  }
+
+  // Si se llegó aquí porque la sesión venció, se avisa en la misma pantalla.
+  const motivo = new URLSearchParams(window.location.search).get('motivo');
+  if (motivo === 'vencida') {
+    mostrarError('Tu sesión venció. Inicia sesión de nuevo.');
+  }
+
+  // Botón del ojo: alterna entre ver y ocultar la contraseña.
+  verContrasena.addEventListener('click', () => {
+    const mostrar = contrasena.type === 'password';
+    contrasena.type = mostrar ? 'text' : 'password';
+    iconoOjo.hidden = mostrar;
+    iconoTachado.hidden = !mostrar;
+    const texto = mostrar ? 'Ocultar contraseña' : 'Mostrar contraseña';
+    verContrasena.setAttribute('aria-label', texto);
+    verContrasena.setAttribute('aria-pressed', String(mostrar));
+    verContrasena.title = texto;
+    contrasena.focus();
+  });
+
+  // El error desaparece en cuanto el encargado vuelve a escribir.
+  usuario.addEventListener('input', ocultarError);
+  contrasena.addEventListener('input', ocultarError);
+
+  formulario.addEventListener('submit', async (evento) => {
+    evento.preventDefault();
+    ocultarError();
+
+    if (!usuario.value.trim() || !contrasena.value) {
+      mostrarError('Escribe tu usuario y tu contraseña.');
+      return;
+    }
+
+    entrar.disabled = true;
+    entrar.textContent = 'Ingresando…';
+    try {
+      const correcto = await iniciarSesion(usuario.value.trim(), contrasena.value);
+      if (correcto) {
+        window.location.href = '/';
+        return;
+      }
+      mostrarError('Usuario o contraseña incorrecta, intente nuevamente.');
+      contrasena.value = '';
+      contrasena.focus();
+    } catch (e) {
+      mostrarError(e.message);
+    } finally {
+      entrar.disabled = false;
+      entrar.textContent = 'Iniciar sesión';
+    }
+  });
+</script>
+
+<style>
+  .fondo {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    background: var(--azul-claro);
+  }
+
+  .caja {
+    width: 100%;
+    max-width: 380px;
+    background: var(--blanco);
+    border: 1px solid var(--borde);
+    border-top: 6px solid var(--azul);
+    border-radius: var(--radio-tarjeta);
+    padding: 28px 28px 24px;
+  }
+
+  .encabezado {
+    text-align: center;
+    margin-bottom: 22px;
+  }
+
+  .encabezado h1 {
+    font-size: 2rem;
+    margin: 0;
+  }
+
+  .encabezado p {
+    margin: 0;
+    color: var(--texto-suave);
+  }
+
+  .fila-contrasena {
+    display: flex;
+    gap: 6px;
+  }
+
+  .boton-ojo {
+    flex: 0 0 auto;
+    width: 42px;
+    border: 1px solid var(--azul-medio);
+    border-radius: var(--radio);
+    background: var(--blanco);
+    color: var(--azul);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+  }
+
+  .boton-ojo span {
+    display: inline-flex;
+  }
+
+  .boton-ojo span[hidden] {
+    display: none;
+  }
+
+  .boton-ojo:hover {
+    background: var(--azul-claro);
+  }
+
+  .boton-entrar {
+    width: 100%;
+    margin-top: 4px;
+  }
+</style>

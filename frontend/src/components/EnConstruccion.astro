@@ -1,0 +1,30 @@
+---
+/*
+  Aviso provisional para las pantallas que se construyen en las siguientes
+  entregas de la Fase 4. Permite navegar por todo el menú desde ya.
+*/
+interface Props {
+  entrega: number;
+  descripcion: string;
+}
+
+const { entrega, descripcion } = Astro.props;
+---
+
+<div class="tarjeta aviso">
+  <p class="aviso-titulo">Esta pantalla se construye en la entrega {entrega} de la Fase 4.</p>
+  <p>{descripcion}</p>
+  <a class="boton boton-secundario" href="/">Volver al mostrador</a>
+</div>
+
+<style>
+  .aviso {
+    max-width: 620px;
+  }
+
+  .aviso-titulo {
+    font-weight: 600;
+    color: var(--azul-oscuro);
+    margin-top: 0;
+  }
+</style>

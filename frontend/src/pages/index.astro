@@ -1,17 +1,188 @@
 ---
+/*
+  Mostrador: lo primero que ve el encargado al iniciar sesión.
 
+  - Tres opciones según lo que necesita la persona que llega al mostrador.
+  - Debajo, contadores con lo que está pendiente. Cada uno lleva a su lista.
+*/
+import App from '../layouts/App.astro';
+
+const opciones = [
+  {
+    ruta: '/mostrador/entregar',
+    titulo: 'Entrega un objeto',
+    detalle: 'Encontró algo en el campus',
+    icono: 'M21 8l-9-5-9 5 9 5 9-5zM3 8v8l9 5 9-5V8M12 13v8',
+  },
+  {
+    ruta: '/mostrador/perdida',
+    titulo: 'Perdió algo',
+    detalle: 'Registrar reporte de pérdida',
+    icono: 'M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14zM21 21l-5-5',
+  },
+  {
+    ruta: '/mostrador/reclamar',
+    titulo: 'Viene a reclamar',
+    detalle: 'Un objeto que es suyo',
+    icono: 'M7 11V6a2 2 0 0 1 4 0v5M11 10V4a2 2 0 0 1 4 0v6M15 10V6a2 2 0 0 1 4 0v8a7 7 0 0 1-7 7h-1a7 7 0 0 1-6-3.4L3 14a2 2 0 0 1 3.4-2L7 13',
+  },
+];
+
+const contadores = [
+  { id: 'pendientes', etiqueta: 'Reclamaciones pendientes', ruta: '/pendientes' },
+  { id: 'reportes', etiqueta: 'Reportes abiertos', ruta: '/objetos?ver=reportes' },
+  { id: 'disponibles', etiqueta: 'Objetos disponibles', ruta: '/objetos?ver=disponibles' },
+  { id: 'alertas', etiqueta: 'Personas con alerta', ruta: '/alertas', alerta: true },
+];
 ---
 
-<html lang="en">
-	<head>
-		<meta charset="utf-8" />
-		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-		<link rel="icon" href="/favicon.ico" />
-		<meta name="viewport" content="width=device-width" />
-		<meta name="generator" content={Astro.generator} />
-		<title>Pagina</title>
-	</head>
-	<body>
-		<h1>Frontend</h1>
-	</body>
-</html>
+<App titulo="Mostrador" seccion="/">
+  <h1>¿Qué necesita la persona?</h1>
+  <p class="ayuda">Elige una opción para empezar.</p>
+
+  <div class="opciones">
+    {
+      opciones.map((opcion) => (
+        <a class="opcion" href={opcion.ruta}>
+          <svg aria-hidden="true" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d={opcion.icono} />
+          </svg>
+          <span class="opcion-titulo">{opcion.titulo}</span>
+          <span class="opcion-detalle">{opcion.detalle}</span>
+        </a>
+      ))
+    }
+  </div>
+
+  <h2 class="titulo-resumen">Resumen</h2>
+  <div class="contadores">
+    {
+      contadores.map((c) => (
+        <a class:list={['contador', { 'contador-alerta': c.alerta }]} href={c.ruta}>
+          <span class="contador-etiqueta">{c.etiqueta}</span>
+          <span class="contador-valor" id={`contador-${c.id}`}>–</span>
+        </a>
+      ))
+    }
+  </div>
+  <p id="error-contadores" class="mensaje-error" role="alert" hidden></p>
+</App>
+
+<script>
+  import { api } from '../lib/api.js';
+
+  /*
+    Cada contador se calcula con un endpoint que ya existe en el backend:
+    - Pendientes: GET /reclamaciones (por defecto devuelve las PENDIENTES).
+    - Reportes abiertos: GET /objetos?estado=PERDIDO (los vencidos ya no cuentan).
+    - Disponibles: GET /objetos?estado=DISPONIBLE.
+    - Alertas: GET /personas/alertas.
+  */
+  const consultas = {
+    pendientes: '/reclamaciones',
+    reportes: '/objetos?tipo_registro=PERDIDO&estado=PERDIDO',
+    disponibles: '/objetos?tipo_registro=ENCONTRADO&estado=DISPONIBLE',
+    alertas: '/personas/alertas',
+  };
+
+  Promise.all(
+    Object.entries(consultas).map(async ([id, ruta]) => {
+      const lista = await api(ruta);
+      document.getElementById(`contador-${id}`).textContent = String(lista.length);
+    }),
+  ).catch((error) => {
+    const aviso = document.getElementById('error-contadores');
+    aviso.textContent = error.message;
+    aviso.hidden = false;
+  });
+</script>
+
+<style>
+  .ayuda {
+    color: var(--texto-suave);
+    margin: 0 0 20px;
+  }
+
+  .opciones {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+    gap: 16px;
+    margin-bottom: 32px;
+  }
+
+  .opcion {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 22px;
+    background: var(--blanco);
+    border: 1px solid var(--borde);
+    border-radius: var(--radio-tarjeta);
+    color: var(--azul);
+    text-decoration: none;
+    transition: border-color 0.15s, background 0.15s;
+  }
+
+  .opcion:hover {
+    border-color: var(--azul);
+    background: var(--azul-claro);
+  }
+
+  .opcion-titulo {
+    font-size: 1.15rem;
+    font-weight: 600;
+    color: var(--azul-oscuro);
+  }
+
+  .opcion-detalle {
+    color: var(--texto-suave);
+    font-size: 0.92rem;
+  }
+
+  .titulo-resumen {
+    font-size: 1rem;
+    color: var(--texto-suave);
+  }
+
+  .contadores {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 12px;
+    margin-bottom: 12px;
+  }
+
+  .contador {
+    display: flex;
+    flex-direction: column;
+    padding: 14px 16px;
+    background: var(--blanco);
+    border: 1px solid var(--borde);
+    border-radius: var(--radio);
+    text-decoration: none;
+  }
+
+  .contador:hover {
+    border-color: var(--azul);
+  }
+
+  .contador-etiqueta {
+    font-size: 0.85rem;
+    color: var(--texto-suave);
+  }
+
+  .contador-valor {
+    font-size: 1.6rem;
+    font-weight: 700;
+    color: var(--azul-oscuro);
+  }
+
+  .contador-alerta {
+    background: var(--rojo-fondo);
+    border-color: var(--rojo-borde);
+  }
+
+  .contador-alerta .contador-etiqueta,
+  .contador-alerta .contador-valor {
+    color: var(--rojo);
+  }
+</style>
