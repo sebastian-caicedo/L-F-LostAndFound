@@ -1,0 +1,213 @@
+
+name: Fase 5 - Pruebas automaticas
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verificar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    steps:
+      - name: Descargar proyecto
+        uses: actions/checkout@v4
+
+      - name: Instalar Python 3.14
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.14'
+
+      - name: Instalar Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Crear archivo de configuracion
+        run: cp .env.example .env
+
+      - name: Instalar dependencias del backend
+        run: |
+          python -m pip install -r backend/requirements.txt > backend-install.log 2>&1 || {
+            cat backend-install.log
+            exit 1
+          }
+          echo "Dependencias instaladas correctamente"
+
+      - name: Comprobar clave de seguridad
+        run: |
+          if (cd backend && python -c "import app.main") > clave.log 2>&1; then
+            echo "ERROR: acepto una clave de ejemplo"
+            exit 1
+          fi
+          grep -q "Falta configurar SECRET_KEY" clave.log || {
+            cat clave.log
+            exit 1
+          }
+          echo "Clave de ejemplo rechazada correctamente"
+
+      - name: Configurar entorno de pruebas
+        run: |
+          python - <<'PY'
+          import secrets
+          from pathlib import Path
+
+          archivo = Path(".env")
+          texto = archivo.read_text()
+          texto = texto.replace(
+              "SECRET_KEY=cambiar-por-una-clave-larga-y-aleatoria",
+              "SECRET_KEY=" + secrets.token_hex(32)
+          )
+          texto = texto.replace(
+              "SEED_ENCARGADO_PASSWORD=pon-aqui-una-contrasena-de-prueba",
+              "SEED_ENCARGADO_PASSWORD=Prueba-Fase5-2026"
+          )
+          archivo.write_text(texto)
+          print("Entorno configurado")
+          PY
+
+      - name: Crear base de datos de prueba
+        run: |
+          cd backend
+          python seed.py 2>&1 | tee ../base-datos.log
+          exit ${PIPESTATUS[0]}
+
+      - name: Verificar base de datos
+        run: |
+          cd backend
+          python verificar_bd.py 2>&1 | tee ../verificacion.log
+          exit ${PIPESTATUS[0]}
+
+      - name: Probar API e inicio de sesion
+        run: |
+          cd backend
+          python -m uvicorn app.main:app --host 127.0.0.1 --port 8000 > ../servidor.log 2>&1 &
+          servidor=$!
+          trap 'kill "$servidor" 2>/dev/null || true' EXIT
+          cd ..
+
+          python - <<'PY' 2>&1 | tee api.log
+          import json
+          import time
+          from urllib.request import Request, urlopen
+          from urllib.error import HTTPError, URLError
+          from urllib.parse import urlencode
+
+          base = "http://127.0.0.1:8000"
+
+          for intento in range(40):
+              try:
+                  with urlopen(base + "/health", timeout=2) as r:
+                      assert json.load(r) == {"status": "ok"}
+                  print("OK: servidor funcionando")
+                  break
+              except (URLError, TimeoutError):
+                  time.sleep(0.5)
+          else:
+              raise RuntimeError("Backend no responde")
+
+          def login(usuario, clave):
+              datos = urlencode({
+                  "username": usuario,
+                  "password": clave
+              }).encode()
+              req = Request(
+                  base + "/auth/login",
+                  data=datos,
+                  method="POST"
+              )
+              try:
+                  with urlopen(req, timeout=5) as r:
+                      return r.status, json.load(r)
+              except HTTPError as error:
+                  return error.code, {}
+
+          estado, _ = login("incorrecto", "incorrecto")
+          assert estado == 401
+          print("OK: acceso incorrecto rechazado")
+
+          estado, datos = login(
+              "encargado",
+              "Prueba-Fase5-2026"
+          )
+          assert estado == 200
+          token = datos["access_token"]
+          print("OK: inicio de sesion correcto")
+
+          consultas = {
+              "/reclamaciones": 1,
+              "/objetos?tipo_registro=PERDIDO&estado=PERDIDO": 3,
+              "/objetos?tipo_registro=ENCONTRADO&estado=DISPONIBLE": 3,
+              "/personas/alertas": 1
+          }
+
+          for ruta, esperado in consultas.items():
+              req = Request(
+                  base + ruta,
+                  headers={
+                      "Authorization": "Bearer " + token
+                  }
+              )
+              with urlopen(req, timeout=5) as r:
+                  resultado = json.load(r)
+              assert len(resultado) == esperado
+              print("OK:", ruta, esperado)
+          PY
+
+          exit ${PIPESTATUS[0]}
+
+      - name: Instalar y compilar frontend
+        run: |
+          cd frontend
+          npm ci > ../frontend-install.log 2>&1 || {
+            cat ../frontend-install.log
+            exit 1
+          }
+          npm run build > ../frontend-build.log 2>&1 || {
+            cat ../frontend-build.log
+            exit 1
+          }
+          echo "OK: frontend compilado"
+
+      - name: Probar pantalla de inicio
+        run: |
+          cd frontend
+          npm run dev -- --host 127.0.0.1 > ../frontend-servidor.log 2>&1 &
+          servidor=$!
+          trap 'kill "$servidor" 2>/dev/null || true' EXIT
+          cd ..
+
+          python - <<'PY' 2>&1 | tee pantalla.log
+          import time
+          from urllib.request import urlopen
+          from urllib.error import URLError
+
+          for intento in range(40):
+              try:
+                  with urlopen(
+                      "http://127.0.0.1:4321/login",
+                      timeout=2
+                  ) as respuesta:
+                      pagina = respuesta.read().decode()
+                      assert respuesta.status == 200
+                      assert "Iniciar sesión" in pagina
+                  print("OK: pantalla de login disponible")
+                  break
+              except (URLError, TimeoutError):
+                  time.sleep(0.5)
+          else:
+              raise RuntimeError("Frontend no responde")
+          PY
+
+          exit ${PIPESTATUS[0]}
+
+      - name: Guardar registros de pruebas
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: evidencias-fase5
+          path: "*.log"
+          if-no-files-found: warn
