@@ -182,17 +182,25 @@ def editar(db: Session, objeto_id: int, datos: ObjetoEditar, encargado: Encargad
 
 def guardar_foto(db: Session, objeto_id: int, contenido: bytes, encargado: Encargado) -> Objeto:
     """
-    Guarda o reemplaza la foto de un objeto (RF20). Si ya tenía una, la anterior
-    se borra. Cuenta como modificación del objeto (RF25).
+    Guarda o reemplaza la foto de un objeto (RF20).
+    Si ya tenía una, la anterior se borra únicamente
+    después de guardar correctamente los cambios.
     """
     objeto = obtener(db, objeto_id)
     _verificar_editable(objeto)
 
     nueva = fotos.guardar_foto(contenido, fotos.CARPETA_OBJETOS)
     anterior = objeto.foto
-    objeto.foto = nueva
-    _registrar_modificacion(objeto, encargado)
-    db.commit()
+
+    try:
+        objeto.foto = nueva
+        _registrar_modificacion(objeto, encargado)
+        db.commit()
+    except Exception:
+        db.rollback()
+        fotos.borrar_foto(fotos.CARPETA_OBJETOS, nueva)
+        raise
+
     fotos.borrar_foto(fotos.CARPETA_OBJETOS, anterior)
     db.refresh(objeto)
     return objeto
