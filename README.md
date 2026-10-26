@@ -323,9 +323,9 @@ La base de datos **no es la de la universidad**. Todos los datos que usa el sist
 | 2 | Diseño de la base de datos | Completada |
 | 3 | Backend | Completada |
 | 4 | Frontend | Completada |
-| 5 | Integración | En curso |
-| 6 | Calidad y pruebas | Pendiente |
-| 7 | Documentación y entrega | Pendiente |
+| 5 | Integración | Completada |
+| 6 | Calidad y pruebas | Completada |
+| 7 | Documentación y entrega | Completada |
 
 El detalle de cada fase está en la hoja de ruta dentro de [`docs/`](docs/). El resumen de lo hecho en cada fase está en [`docs/avances/`](docs/avances/).
 
