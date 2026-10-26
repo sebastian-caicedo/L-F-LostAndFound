@@ -1,0 +1,41 @@
+
+name: Fase 5 - Pruebas complementarias
+
+on:
+  push:
+    branches: [pruebas-fase5]
+  workflow_dispatch:
+
+jobs:
+  pruebas:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Descargar repositorio
+        uses: actions/checkout@v4
+
+      - name: Preparar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Instalar dependencias del backend
+        working-directory: backend
+        run: pip install -r requirements.txt
+
+      - name: Comprobar sintaxis Python
+        working-directory: backend
+        run: python -m compileall -q app
+
+      - name: Preparar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Instalar frontend
+        working-directory: frontend
+        run: npm ci
+
+      - name: Compilar frontend
+        working-directory: frontend
+        run: npm run build
