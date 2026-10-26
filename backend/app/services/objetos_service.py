@@ -3,7 +3,7 @@
 from datetime import date, timedelta
 from pathlib import Path
 
-from sqlalchemy import select, update
+from sqlalchemy import func, select, update
 from sqlalchemy.orm import Session
 
 from app import config, fotos
@@ -13,6 +13,7 @@ from app.schemas.comparacion import Coincidencia
 from app.schemas.objetos import ObjetoEditar, ObjetoEncontradoCrear, ObjetoPerdidoCrear
 from app.schemas.reclamaciones import ObjetoComparacion
 from app.services import historial_service
+from app.texto import sin_tildes
 
 # Campos que solo aplican a un tipo de registro.
 _SOLO_PERDIDO = {"fecha_reporte"}
@@ -99,8 +100,8 @@ def listar(
     Filtros opcionales y combinables:
     - tipo_registro: PERDIDO o ENCONTRADO.
     - estado: PERDIDO (reportes abiertos), RECUPERADO, VENCIDO, DISPONIBLE o ENTREGADO.
-    - tipo: categoría (coincidencia parcial, sin importar mayúsculas).
-    - buscar: texto contenido en la descripción.
+    - tipo: categoría (coincidencia parcial, sin importar mayúsculas ni tildes).
+    - buscar: texto contenido en la descripción (sin importar mayúsculas ni tildes).
     - persona_id: reportes de pérdida de una persona (por ejemplo, para
       vincular su reporte abierto a una reclamación, RF27).
     """
@@ -110,10 +111,12 @@ def listar(
         consulta = consulta.where(Objeto.tipo_registro == tipo_registro)
     if estado is not None:
         consulta = consulta.where(Objeto.estado == estado)
+    # Las búsquedas de texto no distinguen tildes ni mayúsculas:
+    # "audifonos" encuentra "Audífonos" (ver app/texto.py).
     if tipo and tipo.strip():
-        consulta = consulta.where(Objeto.tipo.ilike(f"%{tipo.strip()}%"))
+        consulta = consulta.where(func.sin_tildes(Objeto.tipo).like(f"%{sin_tildes(tipo.strip())}%"))
     if buscar and buscar.strip():
-        consulta = consulta.where(Objeto.descripcion.ilike(f"%{buscar.strip()}%"))
+        consulta = consulta.where(func.sin_tildes(Objeto.descripcion).like(f"%{sin_tildes(buscar.strip())}%"))
     if persona_id is not None:
         consulta = consulta.where(Objeto.persona_id == persona_id)
     return list(db.scalars(consulta))
@@ -219,10 +222,11 @@ def ruta_foto(db: Session, objeto_id: int) -> Path:
 
 def _misma_categoria(a: str, b: str) -> bool:
     """
-    Compara categorías sin importar mayúsculas: "Calculadora" coincide con
-    "calculadora científica" porque una contiene a la otra.
+    Compara categorías sin importar mayúsculas ni tildes: "Calculadora" coincide
+    con "calculadora científica" porque una contiene a la otra, y "Audifonos"
+    coincide con "Audífonos".
     """
-    a, b = a.strip().lower(), b.strip().lower()
+    a, b = sin_tildes(a.strip()), sin_tildes(b.strip())
     return a in b or b in a
 
 

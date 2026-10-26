@@ -1,11 +1,12 @@
 """Reglas de negocio del módulo de personas: estudiantes y docentes (RF02, RF19)."""
 
-from sqlalchemy import or_, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
 from app.errores import Conflicto, DatoInvalido, NoEncontrado
 from app.models import Persona, TipoPersona
 from app.schemas.personas import DocenteCrear, EstudianteCrear
+from app.texto import sin_tildes
 from app.validaciones import normalizar_codigo
 
 
@@ -45,18 +46,19 @@ def listar(db: Session, tipo: TipoPersona | None = None, buscar: str | None = No
     """
     Lista las personas, ordenadas por nombre.
     - tipo: solo estudiantes o solo docentes.
-    - buscar: texto que se busca en el nombre, el código o el correo.
+    - buscar: texto que se busca en el nombre, el código o el correo (sin importar mayúsculas ni tildes).
     """
     consulta = select(Persona).order_by(Persona.nombre)
     if tipo is not None:
         consulta = consulta.where(Persona.tipo == tipo)
     if buscar and buscar.strip():
-        patron = f"%{buscar.strip()}%"
+        # Sin importar tildes ni mayúsculas: "maria" encuentra a "María".
+        patron = f"%{sin_tildes(buscar.strip())}%"
         consulta = consulta.where(
             or_(
-                Persona.nombre.ilike(patron),
-                Persona.codigo.ilike(patron),
-                Persona.correo.ilike(patron),
+                func.sin_tildes(Persona.nombre).like(patron),
+                func.sin_tildes(Persona.codigo).like(patron),
+                func.sin_tildes(Persona.correo).like(patron),
             )
         )
     return list(db.scalars(consulta))

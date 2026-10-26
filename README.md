@@ -32,6 +32,7 @@ Iniciar sesión → Registrar persona (estudiante o docente) → Registrar objet
 - Si una entrega resulta fraudulenta, el objeto sigue `ENTREGADO` y se registra un incidente con cómo ocurrió y qué medida se propone.
 - Una persona con **3 o más reclamaciones rechazadas** de objetos distintos genera una alerta para el encargado. La alerta no bloquea: la decisión sigue siendo del encargado. No cuenta el rechazo de un objeto del que después se comprobó, mediante un incidente, que la persona era el dueño real.
 - Un **reporte de pérdida** queda abierto 15 días desde que se registra (`DIAS_VIGENCIA_REPORTE`). Si en ese tiempo no se recupera el objeto, pasa a `VENCIDO`: sale de los reportes abiertos y de las coincidencias, pero **no se borra**, porque queda como evidencia. Si la persona sigue buscando, se registra un reporte nuevo.
+- Las **búsquedas** y las **coincidencias** no distinguen tildes ni mayúsculas: `audifonos` encuentra `Audífonos` y `maria` encuentra a `María`. Los datos se guardan tal como se escribieron.
 - Una reclamación se puede **vincular al reporte de pérdida** abierto de la misma persona. Al entregar el objeto, ese reporte se cierra como `RECUPERADO`.
 - Se puede registrar la reclamación de un objeto **ya entregado**. No se puede aprobar, pero la comparación muestra a quién se entregó, cuándo, qué describió esa persona y con qué motivo se aprobó, para evaluar un posible fraude. Lo mismo muestran las coincidencias de un reporte de pérdida.
 
@@ -122,6 +123,7 @@ L-F-LostAndFound/
 │   │   ├── errores.py       # Errores de negocio (404, 409, 422) con mensajes en español
 │   │   ├── validaciones.py  # Normalización de código, correo, teléfono y fechas
 │   │   ├── fotos.py         # Guardado y validación de fotos
+│   │   ├── texto.py         # Búsquedas sin importar tildes ni mayúsculas
 │   │   ├── schemas/         # Datos que entran y salen de la API (Pydantic)
 │   │   ├── services/        # Reglas de negocio
 │   │   └── routers/         # Endpoints HTTP, uno por módulo
@@ -266,12 +268,12 @@ Todos los endpoints, excepto `/health` y `/auth/login`, requieren el token de se
 | GET | `/auth/me` | Datos del encargado con la sesión abierta | RF01 |
 | POST | `/personas/estudiantes` | Registra un estudiante | RF02 |
 | POST | `/personas/docentes` | Registra un docente | RF19 |
-| GET | `/personas` | Lista personas; filtros `tipo` y `buscar` (nombre, código o correo) | RF02, RF19 |
+| GET | `/personas` | Lista personas; filtros `tipo` y `buscar` (nombre, código o correo, sin importar tildes ni mayúsculas) | RF02, RF19 |
 | GET | `/personas/codigo/{codigo}` | Busca un estudiante por código | RF02 |
 | GET | `/personas/{id}` | Datos de una persona | RF02, RF19 |
 | POST | `/objetos/perdidos` | Registra un objeto perdido | RF03 |
 | POST | `/objetos/encontrados` | Registra un objeto encontrado | RF04 |
-| GET | `/objetos` | Consulta objetos; filtros `tipo_registro`, `estado` (`PERDIDO` = reportes abiertos, `RECUPERADO`, `VENCIDO`, `DISPONIBLE`, `ENTREGADO`), `tipo`, `buscar` y `persona_id` (reportes de una persona). En los reportes incluye quién lo reportó (nombre y código) | RF05, RF27, RF29 |
+| GET | `/objetos` | Consulta objetos; filtros `tipo_registro`, `estado` (`PERDIDO` = reportes abiertos, `RECUPERADO`, `VENCIDO`, `DISPONIBLE`, `ENTREGADO`), `tipo`, `buscar` y `persona_id` (reportes de una persona). Los filtros de texto no distinguen tildes ni mayúsculas (`audifonos` encuentra `Audífonos`). En los reportes incluye quién lo reportó (nombre y código) | RF05, RF27, RF29 |
 | GET | `/objetos/{id}` | Detalle de un objeto | RF05 |
 | PATCH | `/objetos/{id}` | Corrige datos de un objeto no entregado | RF25 |
 | PUT | `/objetos/{id}/foto` | Sube o reemplaza la foto de un objeto (JPG, PNG o WEBP, máx. 5 MB) | RF20 |

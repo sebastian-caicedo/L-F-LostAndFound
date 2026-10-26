@@ -47,6 +47,18 @@ def activar_llaves_foraneas(conexion_dbapi, _registro):
     cursor.close()
 
 
+@event.listens_for(engine, "connect")
+def registrar_sin_tildes(conexion_dbapi, _registro):
+    """
+    Registra en SQLite la función sin_tildes() para buscar sin importar tildes
+    ni mayúsculas. SQLite no trae esta función: se le "presta" la de Python
+    (app/texto.py) y así se puede usar dentro de las consultas.
+    """
+    from app.texto import sin_tildes
+
+    conexion_dbapi.create_function("sin_tildes", 1, sin_tildes, deterministic=True)
+
+
 SessionLocal = sessionmaker(bind=engine, autoflush=False, expire_on_commit=False)
 
 

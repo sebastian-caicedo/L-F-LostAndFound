@@ -211,7 +211,7 @@ import SelectorFoto from '../../components/SelectorFoto.astro';
     listarObjetos,
     resumenObjeto,
   } from '../../lib/objetos.js';
-  import { $, escapar, fecha, fechaHora, etiquetaEstado, mostrarMensaje, ocultarMensaje, conBoton } from '../../lib/ui.js';
+  import { $, sinTildes, escapar, fecha, fechaHora, etiquetaEstado, mostrarMensaje, ocultarMensaje, conBoton } from '../../lib/ui.js';
 
   const pasos = crearPasos();
   const fotoEntrega = crearSelectorFoto($('foto-entrega'));
@@ -316,8 +316,8 @@ import SelectorFoto from '../../components/SelectorFoto.astro';
       return;
     }
     const mismaCategoria = (r) => {
-      const a = r.tipo.toLowerCase();
-      const b = objeto.tipo.toLowerCase();
+      const a = sinTildes(r.tipo);
+      const b = sinTildes(objeto.tipo);
       return a.includes(b) || b.includes(a);
     };
     const sugerido = reportes.find((r) => r.id === reporteId) ?? reportes.find(mismaCategoria);

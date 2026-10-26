@@ -98,7 +98,7 @@ import BuscarPersona from '../components/BuscarPersona.astro';
   import { api } from '../lib/api.js';
   import { listarObjetos, enlaceObjeto, siguientePaso, htmlFoto, cargarFotos } from '../lib/objetos.js';
   import { enlacePersona, crearBuscarPersona } from '../lib/persona.js';
-  import { $, escapar, fecha, fechaHora, etiquetaEstado, mostrarMensaje, ocultarMensaje, conBoton } from '../lib/ui.js';
+  import { $, sinTildes, escapar, fecha, fechaHora, etiquetaEstado, mostrarMensaje, ocultarMensaje, conBoton } from '../lib/ui.js';
 
   const conAlerta = (r) => (r.alerta?.activa ? ' <span class="etiqueta etiqueta-alerta">Con alerta</span>' : '');
   const decision = (d) =>
@@ -205,8 +205,9 @@ import BuscarPersona from '../components/BuscarPersona.astro';
 
   // Filtro de texto sobre las filas ya cargadas (no vuelve a consultar el backend).
   function pintar() {
-    const texto = $('filtro').value.trim().toLowerCase();
-    const visibles = registros.filter((r) => !texto || JSON.stringify(r).toLowerCase().includes(texto));
+    // Sin importar mayúsculas ni tildes: "maria" encuentra a "María".
+    const texto = sinTildes($('filtro').value.trim());
+    const visibles = registros.filter((r) => !texto || sinTildes(JSON.stringify(r)).includes(texto));
     $('filas').innerHTML = visibles.map((r) => `<tr>${VISTAS[ver].fila(r).join('')}</tr>`).join('');
     cargarFotos($('filas'));
     $('vacio').hidden = visibles.length > 0;

@@ -43,7 +43,7 @@ def listar_personas(db: DbSession, tipo: TipoPersona | None = None, buscar: str 
     """
     Lista estudiantes y docentes. Filtros opcionales:
     - tipo: ESTUDIANTE o DOCENTE.
-    - buscar: texto contenido en el nombre, el código o el correo.
+    - buscar: texto contenido en el nombre, el código o el correo (sin importar mayúsculas ni tildes).
     """
     return personas_service.listar(db, tipo, buscar)
 

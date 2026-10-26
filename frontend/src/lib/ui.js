@@ -20,6 +20,17 @@ export function escapar(texto) {
     .replaceAll("'", '&#39;');
 }
 
+/**
+ * Texto en minúsculas y sin tildes, para comparar en las búsquedas:
+ * "Audífonos" -> "audifonos". Es la misma regla que usa el backend (app/texto.py).
+ */
+export function sinTildes(texto) {
+  return String(texto ?? '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '');
+}
+
 /** "2026-10-07" o "2026-10-07T08:15:00" -> "07/10/2026". */
 export function fecha(valor) {
   if (!valor) return '';

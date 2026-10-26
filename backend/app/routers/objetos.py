@@ -60,7 +60,7 @@ def listar_objetos(
     - tipo_registro: PERDIDO o ENCONTRADO.
     - estado: PERDIDO (reportes abiertos), RECUPERADO, VENCIDO, DISPONIBLE o ENTREGADO.
     - tipo: categoría (celular, billetera...).
-    - buscar: texto contenido en la descripción.
+    - buscar: texto contenido en la descripción (sin importar mayúsculas ni tildes).
     - persona_id: reportes de pérdida de una persona.
 
     La lista no muestra las características: solo aparecen en el detalle.
