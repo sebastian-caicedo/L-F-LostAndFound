@@ -1,9 +1,13 @@
 
 name: Fase 5 - Pruebas complementarias
 
+# Corre solo en cada cambio que llega a main y en cada Pull Request hacia main,
+# y también se puede lanzar a mano desde la pestaña Actions.
 on:
   push:
-    branches: [pruebas-fase5]
+    branches: [main]
+  pull_request:
+    branches: [main]
   workflow_dispatch:
 
 jobs:
@@ -17,7 +21,8 @@ jobs:
       - name: Preparar Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          # La misma versión que usa el proyecto (README) y fase5-integracion.yml.
+          python-version: '3.14'
 
       - name: Instalar dependencias del backend
         working-directory: backend

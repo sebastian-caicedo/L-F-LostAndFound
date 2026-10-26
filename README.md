@@ -310,7 +310,10 @@ La base de datos **no es la de la universidad**. Todos los datos que usa el sist
 
 ## Pruebas
 
-Pendiente (Fase 6 de la hoja de ruta). Las pruebas cubrirán autenticación y permisos, validación de datos, reclamaciones aprobadas y rechazadas, motivo obligatorio, entregas, cambio de estado del objeto y trazabilidad.
+- **Pruebas complementarias** ([`fase5-complementarias.yml`](.github/workflows/fase5-complementarias.yml)): en cada cambio que llega a `main` y en cada Pull Request, GitHub Actions instala las dependencias, revisa que el código Python no tenga errores de sintaxis y compila el frontend.
+- **Pruebas de integración** ([`fase5-integracion.yml`](.github/workflows/fase5-integracion.yml)): instala el proyecto desde cero, comprueba que se rechaza la clave de ejemplo, crea y verifica la base de datos, prueba el inicio de sesión y los contadores del mostrador, y abre la pantalla de inicio de sesión. Se lanza a mano en **Actions → Fase 5 - Pruebas automaticas → Run workflow**; los registros quedan como artefacto `evidencias-fase5`.
+- **Verificación manual:** [`docs/integracion/verificacion-fase5.md`](docs/integracion/verificacion-fase5.md), en el computador de cada integrante.
+- **Pruebas del backend con pytest:** pendientes (Fase 6). Cubrirán autenticación y permisos, validación de datos, reclamaciones aprobadas y rechazadas, motivo obligatorio, entregas, cambio de estado del objeto y trazabilidad.
 
 ## Hoja de ruta
 
@@ -320,7 +323,7 @@ Pendiente (Fase 6 de la hoja de ruta). Las pruebas cubrirán autenticación y pe
 | 2 | Diseño de la base de datos | Completada |
 | 3 | Backend | Completada |
 | 4 | Frontend | Completada |
-| 5 | Integración | Pendiente |
+| 5 | Integración | En curso |
 | 6 | Calidad y pruebas | Pendiente |
 | 7 | Documentación y entrega | Pendiente |
 
@@ -330,12 +333,13 @@ El detalle de cada fase está en la hoja de ruta dentro de [`docs/`](docs/). El 
 
 En [`docs/`](docs/) se encuentran:
 
-- El documento del Proyecto de Aula: historias de usuario, elicitación y decisiones de alcance.
-- La hoja de ruta del proyecto.
+- El documento final del Proyecto de Aula en [`docs/Proyecto_de_Aula_LF_Final.docx`](docs/Proyecto_de_Aula_LF_Final.docx): problema, requerimientos RF01–RF29, historias de usuario, arquitectura, modelo de datos, pruebas, resultados y conclusiones.
+- La hoja de ruta del proyecto en [`docs/Hoja_de_Ruta_LF_Lost_and_Found.docx`](docs/Hoja_de_Ruta_LF_Lost_and_Found.docx).
 - El modelo de datos en [`docs/modelo-datos.md`](docs/modelo-datos.md): diagrama entidad-relación, estados y reglas de integridad.
 - Los diagramas UML en [`docs/diagramas/`](docs/diagramas/): casos de uso, clases, secuencia, actividades, componentes y despliegue.
-- El diagrama de clases actualizado con el ajuste de alcance RF19–RF26 en [`docs/diagramas/diagrama-clases.md`](docs/diagramas/diagrama-clases.md).
-- Los avances de cada fase en [`docs/avances/`](docs/avances/): qué se hizo, decisiones tomadas, trazabilidad de requerimientos y verificación ([Fase 3](docs/avances/fase3.md)).
+- El diagrama de clases actualizado con el ajuste de alcance RF19–RF29 en [`docs/diagramas/diagrama-clases.md`](docs/diagramas/diagrama-clases.md).
+- Los avances de cada fase en [`docs/avances/`](docs/avances/): qué se hizo, decisiones tomadas, trazabilidad de requerimientos y verificación ([Fase 3](docs/avances/fase3.md), [Fase 4](docs/avances/fase4.md)).
+- La lista de verificación de la integración (Fase 5) en [`docs/integracion/verificacion-fase5.md`](docs/integracion/verificacion-fase5.md), para hacerla en el computador de cada integrante.
 
 ## Equipo
 

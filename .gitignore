@@ -21,6 +21,8 @@ uploads/
 *.sqlite3
 
 # Editores y sistema
+# Archivos temporales que crea Word mientras un documento está abierto
+~$*
 .vscode/
 .idea/
 .DS_Store
