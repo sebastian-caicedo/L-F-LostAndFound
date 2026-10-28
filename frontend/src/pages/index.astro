@@ -185,4 +185,235 @@ const contadores = [
   .contador-alerta .contador-valor {
     color: var(--rojo);
   }
+
+
+/* ======================================
+   LOSTANDFOUND — MOSTRADOR 3D
+   ====================================== */
+
+h1 {
+  font-size: clamp(2rem, 4vw, 3rem);
+  font-weight: 900;
+  letter-spacing: -.045em;
+  background: linear-gradient(
+    100deg, #087bdb, #8053ed, #df42b2
+  );
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.ayuda {
+  font-size: 1.05rem;
+  margin-bottom: 28px;
+}
+
+.opciones {
+  grid-template-columns: repeat(
+    auto-fit, minmax(min(100%, 250px), 1fr)
+  );
+  gap: 22px;
+  margin-bottom: 42px;
+}
+
+.opcion {
+  position: relative;
+  overflow: hidden;
+  min-height: 205px;
+  padding: 30px 24px;
+  gap: 12px;
+  border-radius: 25px;
+  border: 1px solid rgba(255,255,255,.7);
+  color: #fff;
+  background: linear-gradient(
+    135deg, #068dd8, #3059e9
+  );
+  box-shadow:
+    0 9px 0 rgba(20,52,130,.24),
+    0 18px 30px rgba(30,68,161,.18),
+    inset 0 2px 0 rgba(255,255,255,.35);
+  transition:
+    transform .2s ease,
+    box-shadow .2s ease,
+    filter .2s ease;
+}
+
+.opcion:nth-child(2) {
+  background: linear-gradient(
+    135deg, #7650ef, #b43fe4
+  );
+  box-shadow:
+    0 9px 0 rgba(89,28,149,.25),
+    0 18px 30px rgba(115,51,181,.18),
+    inset 0 2px 0 rgba(255,255,255,.35);
+}
+
+.opcion:nth-child(3) {
+  background: linear-gradient(
+    135deg, #e743a7, #f07865
+  );
+  box-shadow:
+    0 9px 0 rgba(161,46,105,.24),
+    0 18px 30px rgba(190,72,119,.18),
+    inset 0 2px 0 rgba(255,255,255,.35);
+}
+
+.opcion::after {
+  content: "";
+  position: absolute;
+  width: 170px;
+  height: 170px;
+  right: -55px;
+  top: -65px;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle at 30% 30%,
+    rgba(255,255,255,.48),
+    rgba(255,255,255,.12) 35%,
+    transparent 70%
+  );
+  border: 1px solid rgba(255,255,255,.22);
+  pointer-events: none;
+}
+
+.opcion svg {
+  position: relative;
+  z-index: 1;
+  width: 48px;
+  height: 48px;
+  padding: 11px;
+  border-radius: 16px;
+  background: rgba(255,255,255,.18);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.3);
+  stroke: #fff;
+}
+
+.opcion-titulo {
+  position: relative;
+  z-index: 1;
+  font-size: 1.4rem;
+  font-weight: 850;
+  color: #fff;
+}
+
+.opcion-detalle {
+  position: relative;
+  z-index: 1;
+  font-size: .96rem;
+  color: rgba(255,255,255,.9);
+}
+
+.opcion:hover {
+  background: linear-gradient(
+    135deg, #0783c8, #254bdb
+  );
+  transform: translateY(-5px);
+  filter: brightness(1.08);
+}
+
+.opcion:nth-child(2):hover {
+  background: linear-gradient(
+    135deg, #6842dc, #a332d2
+  );
+}
+
+.opcion:nth-child(3):hover {
+  background: linear-gradient(
+    135deg, #d63598, #df6655
+  );
+}
+
+.opcion:active {
+  transform: translateY(4px);
+}
+
+.titulo-resumen {
+  margin-bottom: 18px;
+  color: #25355d;
+  font-size: 1.4rem;
+  font-weight: 800;
+}
+
+.contadores {
+  gap: 16px;
+}
+
+.contador {
+  position: relative;
+  min-height: 130px;
+  justify-content: space-between;
+  padding: 22px;
+  border: 1px solid rgba(255,255,255,.85);
+  border-radius: 22px;
+  background: rgba(255,255,255,.86);
+  box-shadow:
+    0 10px 28px rgba(34,49,113,.11),
+    inset 0 1px 0 #fff;
+  backdrop-filter: blur(14px);
+  transition: transform .2s, box-shadow .2s;
+}
+
+.contador:hover {
+  transform: translateY(-3px);
+  border-color: #9d98f5;
+  box-shadow: 0 15px 32px rgba(79,63,160,.16);
+}
+
+.contador-etiqueta {
+  font-size: .92rem;
+  font-weight: 650;
+  color: #526184;
+}
+
+.contador-valor {
+  font-size: 2.5rem;
+  font-weight: 900;
+  letter-spacing: -.05em;
+  color: #3558d5;
+}
+
+.contador-alerta {
+  background: linear-gradient(
+    145deg, #fff3f7, #ffe8f0
+  );
+  border-color: #ffd3e2;
+}
+
+.contador-alerta .contador-valor,
+.contador-alerta .contador-etiqueta {
+  color: #b42355;
+}
+
+@media (max-width: 600px) {
+  .opciones {
+    gap: 18px;
+  }
+
+  .opcion {
+    min-height: 165px;
+    padding: 24px;
+  }
+
+  .contadores {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+  }
+
+  .contador {
+    min-height: 120px;
+    padding: 15px;
+  }
+
+  .contador-valor {
+    font-size: 2rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .opcion,
+  .contador {
+    transition: none;
+  }
+}
+
 </style>
