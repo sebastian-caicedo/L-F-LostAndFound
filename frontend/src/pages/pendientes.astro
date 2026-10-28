@@ -106,3 +106,132 @@ import App from '../layouts/App.astro';
 
   cargar();
 </script>
+
+
+<style>
+/* LOSTANDFOUND — PENDIENTES 3D */
+
+h1 {
+  font-size: clamp(2rem, 4vw, 2.8rem);
+  font-weight: 900;
+  letter-spacing: -.04em;
+  background: linear-gradient(
+    100deg, #087bdb, #8053ed, #df42b2
+  );
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.ayuda {
+  color: #566586;
+  line-height: 1.6;
+}
+
+.seccion {
+  margin-top: 30px;
+}
+
+.seccion h2 {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 16px;
+  font-size: 1.4rem;
+  font-weight: 850;
+  color: #25345f;
+}
+
+.seccion h2 .etiqueta {
+  padding: 6px 13px;
+  color: #fff;
+  background: linear-gradient(
+    120deg, #137fe2, #8754f5
+  );
+  border-radius: 999px;
+  box-shadow: 0 5px 12px
+    rgba(101,79,216,.2);
+}
+
+.seccion:nth-of-type(2) h2 .etiqueta {
+  background: linear-gradient(
+    120deg, #00a7b8, #257ce5
+  );
+}
+
+.envoltura-tabla {
+  overflow-x: auto;
+  border: 1px solid #dfe5fa;
+  border-radius: 23px;
+  background: rgba(255,255,255,.94);
+  box-shadow:
+    0 14px 34px rgba(31,47,110,.12),
+    inset 0 1px 0 #fff;
+  backdrop-filter: blur(14px);
+}
+
+.tabla {
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.tabla th {
+  padding: 16px 14px;
+  background: linear-gradient(
+    110deg, #172b62, #493e96
+  );
+  color: #fff;
+  font-weight: 750;
+  border: 0;
+}
+
+.tabla td {
+  padding: 16px 14px;
+  border-top: 1px solid #ebeffa;
+  vertical-align: middle;
+}
+
+.tabla tbody tr {
+  transition: background .2s;
+}
+
+.tabla tbody tr:hover {
+  background: #f5f2ff;
+}
+
+.tabla td .boton-principal {
+  min-height: 38px;
+  padding: 8px 14px;
+  white-space: nowrap;
+  border-radius: 12px;
+}
+
+.vacio {
+  padding: 32px 20px;
+  text-align: center;
+  color: #657391;
+}
+
+@media (max-width: 600px) {
+  .seccion h2 {
+    font-size: 1.2rem;
+  }
+
+  .envoltura-tabla {
+    border-radius: 18px;
+  }
+
+  .tabla th,
+  .tabla td {
+    padding: 12px 10px;
+    font-size: .87rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tabla tbody tr {
+    transition: none;
+  }
+}
+</style>
