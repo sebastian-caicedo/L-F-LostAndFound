@@ -21,7 +21,7 @@ import Base from '../layouts/Base.astro';
   <main class="fondo">
     <section class="caja" aria-labelledby="titulo-login">
       <div class="encabezado">
-        <h1 id="titulo-login">L&F</h1>
+        <h1 id="titulo-login">LostAndFound</h1>
         <p>Objetos perdidos y encontrados</p>
       </div>
 
@@ -202,4 +202,189 @@ import Base from '../layouts/Base.astro';
     width: 100%;
     margin-top: 4px;
   }
+
+
+/* LOSTANDFOUND — LOGIN NEON 3D */
+
+.fondo {
+  position: relative;
+  min-height: 100svh;
+  overflow: hidden;
+  isolation: isolate;
+  padding: 32px 18px;
+  background:
+    radial-gradient(ellipse at 18% 18%,
+      rgba(0, 215, 255, .48), transparent 42%),
+    radial-gradient(ellipse at 83% 80%,
+      rgba(247, 62, 193, .48), transparent 42%),
+    radial-gradient(ellipse at 85% 12%,
+      rgba(146, 79, 255, .36), transparent 38%),
+    linear-gradient(135deg,
+      #080e2d 0%, #142b68 52%, #27104d 100%);
+}
+
+.fondo::before,
+.fondo::after {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  width: 250px;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 30% 25%,
+      rgba(255,255,255,.95),
+      rgba(125,231,255,.45) 16%,
+      rgba(124,82,245,.25) 42%,
+      rgba(244,65,205,.16) 65%,
+      transparent 72%);
+  border: 1px solid rgba(255,255,255,.32);
+  box-shadow: inset -18px -22px 35px
+    rgba(41,23,124,.3), 0 0 65px
+    rgba(159,86,255,.28);
+  filter: blur(.3px);
+}
+
+.fondo::before {
+  top: -90px;
+  left: -90px;
+}
+
+.fondo::after {
+  bottom: -120px;
+  right: -85px;
+  width: 300px;
+}
+
+.caja {
+  position: relative;
+  z-index: 1;
+  max-width: 450px;
+  padding: 38px 34px;
+  border: 1px solid rgba(255,255,255,.68);
+  border-top: 1px solid rgba(255,255,255,.85);
+  border-radius: 32px;
+  background: rgba(255,255,255,.91);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  box-shadow:
+    0 25px 70px rgba(3,6,37,.4),
+    0 6px 0 rgba(255,255,255,.12),
+    inset 0 1px 0 #fff;
+}
+
+.encabezado {
+  margin-bottom: 30px;
+}
+
+.encabezado::before {
+  content: "⌕";
+  display: grid;
+  place-items: center;
+  width: 86px;
+  height: 86px;
+  margin: 0 auto 18px;
+  font-size: 4.5rem;
+  font-weight: 800;
+  line-height: 1;
+  color: #fff;
+  border: 2px solid rgba(255,255,255,.7);
+  border-radius: 26px;
+  background: linear-gradient(135deg,
+    #00d9f5, #7750f6 53%, #fa4bbd);
+  text-shadow: 0 3px 6px rgba(6,19,77,.4);
+  box-shadow:
+    0 9px 0 #40318c,
+    0 17px 25px rgba(91,54,209,.38),
+    inset 0 4px 9px rgba(255,255,255,.5);
+  transform: rotate(-5deg);
+}
+
+.encabezado h1 {
+  font-size: clamp(2.3rem, 8vw, 3.35rem);
+  font-weight: 900;
+  line-height: 1.13;
+  letter-spacing: -.07em;
+  color: #694ded;
+  background: linear-gradient(100deg,
+    #087bd8 8%, #8655ee 48%, #e641ad 90%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  filter: drop-shadow(0 4px 2px rgba(83,61,161,.17));
+}
+
+.encabezado p {
+  margin-top: 10px;
+  font-size: .95rem;
+  font-weight: 600;
+  color: #66708e;
+}
+
+.campo label {
+  margin-bottom: 6px;
+  color: #283459;
+  font-weight: 700;
+}
+
+.campo input {
+  min-height: 50px;
+  padding: 12px 15px;
+  border: 1px solid #cdd5f5;
+  border-radius: 14px;
+  background: rgba(255,255,255,.94);
+  box-shadow: inset 0 2px 4px
+    rgba(42,47,99,.04);
+}
+
+.fila-contrasena {
+  gap: 8px;
+}
+
+.boton-ojo {
+  width: 50px;
+  border-radius: 14px;
+  border-color: #cdd5f5;
+}
+
+.boton-entrar {
+  min-height: 54px;
+  margin-top: 12px;
+  border-radius: 16px;
+  font-size: 1rem;
+  font-weight: 800;
+  background: linear-gradient(110deg,
+    #00a7ee, #7652f5, #f342bb);
+  border: 0;
+  color: #fff;
+  box-shadow:
+    0 6px 0 #5141a2,
+    0 15px 24px rgba(113,66,215,.3);
+}
+
+.boton-entrar:hover {
+  background: linear-gradient(110deg,
+    #008dcc, #6743df, #dc2ca6);
+}
+
+.mensaje-error {
+  padding: 12px;
+  border-radius: 12px;
+  background: #fff0f3;
+}
+
+@media (max-width: 480px) {
+  .caja {
+    padding: 30px 22px;
+    border-radius: 26px;
+  }
+
+  .encabezado::before {
+    width: 74px;
+    height: 74px;
+    font-size: 3.8rem;
+  }
+}
+
 </style>
