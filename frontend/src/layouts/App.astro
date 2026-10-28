@@ -42,7 +42,7 @@ const menu = [
   <header>
     <div class="barra-superior">
       <a class="marca" href="/">
-        <span class="marca-nombre">L&F</span>
+        <span class="marca-nombre">LostAndFound</span>
         <span class="marca-subtitulo">Objetos perdidos y encontrados</span>
       </a>
       <div class="sesion">
@@ -177,4 +177,183 @@ const menu = [
     color: var(--azul-oscuro);
     font-weight: 600;
   }
+
+
+/* ==================================
+   LOSTANDFOUND — MENÚ NEÓN 3D
+   ================================== */
+
+.barra-superior {
+  position: relative;
+  padding: 18px 28px;
+  background: linear-gradient(
+    115deg, #080f2e, #172d68 55%, #34206b
+  );
+  border-bottom: 1px solid rgba(255,255,255,.15);
+  box-shadow: 0 8px 28px rgba(13,20,65,.2);
+}
+
+.marca {
+  align-items: center;
+  gap: 14px;
+}
+
+.marca::before {
+  content: "⌕";
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  flex-shrink: 0;
+  border-radius: 15px;
+  color: white;
+  font-size: 2.5rem;
+  font-weight: 800;
+  background: linear-gradient(
+    135deg, #00d9f5, #8154fa 60%, #f247c5
+  );
+  box-shadow:
+    0 5px 0 #38317d,
+    0 10px 22px rgba(118,76,244,.3),
+    inset 0 2px 6px rgba(255,255,255,.45);
+  transform: rotate(-5deg);
+}
+
+.marca-nombre {
+  font-size: 1.8rem;
+  font-weight: 900;
+  letter-spacing: -.06em;
+  background: linear-gradient(
+    90deg, #55e7ff, #baa0ff, #ff85d5
+  );
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  filter: drop-shadow(0 3px 4px rgba(0,0,0,.25));
+}
+
+.marca-subtitulo {
+  color: #d0defe;
+  font-size: .8rem;
+}
+
+.sesion {
+  gap: 18px;
+}
+
+.encargado {
+  color: #e6e9ff;
+  font-weight: 600;
+}
+
+.boton-salir {
+  min-height: 42px;
+  padding: 9px 16px;
+  border-radius: 13px;
+  border: 1px solid rgba(255,255,255,.35);
+  background: rgba(255,255,255,.09);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.15);
+  backdrop-filter: blur(12px);
+  transition: background .2s, transform .2s;
+}
+
+.boton-salir:hover {
+  background: rgba(255,255,255,.2);
+  transform: translateY(-2px);
+}
+
+.barra-menu {
+  padding: 12px 22px;
+  gap: 8px;
+  background: rgba(13,26,65,.94);
+  border-bottom: 1px solid rgba(157,148,255,.25);
+  box-shadow: 0 8px 24px rgba(14,24,72,.12);
+}
+
+.item-menu {
+  display: inline-flex;
+  align-items: center;
+  min-height: 42px;
+  padding: 9px 18px;
+  border-radius: 13px;
+  color: #e5eaff;
+  font-weight: 650;
+  transition:
+    transform .2s,
+    background .2s,
+    box-shadow .2s;
+}
+
+.item-menu:hover {
+  background: rgba(124,104,249,.3);
+  transform: translateY(-2px);
+}
+
+.item-menu.activo {
+  color: #ffffff;
+  background: linear-gradient(
+    110deg, #087bdc, #8252ee, #e542b3
+  );
+  box-shadow:
+    0 4px 0 rgba(29,22,87,.6),
+    0 8px 18px rgba(123,78,229,.3);
+}
+
+.item-menu.activo:hover {
+  color: #ffffff;
+  background: linear-gradient(
+    110deg, #087bdc, #8252ee, #e542b3
+  );
+}
+
+@media (max-width: 760px) {
+  .barra-superior {
+    flex-wrap: wrap;
+    padding: 14px 16px;
+  }
+
+  .marca {
+    width: 100%;
+  }
+
+  .marca::before {
+    width: 42px;
+    height: 42px;
+    font-size: 2.1rem;
+  }
+
+  .marca-nombre {
+    font-size: 1.45rem;
+  }
+
+  .marca-subtitulo {
+    font-size: .73rem;
+  }
+
+  .sesion {
+    width: 100%;
+    margin-left: 0;
+    justify-content: space-between;
+  }
+
+  .barra-menu {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    padding: 12px;
+    scrollbar-width: thin;
+  }
+
+  .item-menu {
+    flex-shrink: 0;
+    white-space: nowrap;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .item-menu,
+  .boton-salir {
+    transition: none;
+  }
+}
+
 </style>
