@@ -699,3 +699,178 @@ legend {
 .seccion > h2 {
   margin-bottom: 10px;
 }
+
+
+/* ======================================
+   LOSTANDFOUND — REDISEÑO VISUAL 3D
+   ====================================== */
+
+:root {
+  --azul-oscuro: #101b40;
+  --azul: #305bea;
+  --azul-hover: #2345c4;
+  --azul-medio: #8b9cf5;
+  --azul-claro: #e9efff;
+  --azul-muy-claro: #f5f6ff;
+  --borde: #dce3fb;
+  --blanco: #ffffff;
+  --texto: #172347;
+  --texto-suave: #596886;
+  --radio: 14px;
+  --radio-tarjeta: 24px;
+  --neon-cian: #00d9f5;
+  --neon-rosa: #f247c5;
+  --neon-violeta: #8752ff;
+  --sombra-3d: 0 12px 30px rgba(32, 45, 100, .13);
+}
+
+body {
+  background:
+    radial-gradient(circle at 95% 2%,
+      rgba(242,71,197,.16), transparent 32%),
+    radial-gradient(circle at 5% 15%,
+      rgba(0,217,245,.16), transparent 30%),
+    linear-gradient(150deg,#f4f7ff,#f9f3ff);
+  min-height: 100vh;
+}
+
+h1 {
+  font-size: clamp(1.7rem, 3vw, 2.4rem);
+  font-weight: 800;
+  letter-spacing: -.035em;
+}
+
+h2, h3 {
+  font-weight: 750;
+  letter-spacing: -.025em;
+}
+
+.tarjeta,
+.envoltura-tabla {
+  border: 1px solid rgba(255,255,255,.85);
+  background: rgba(255,255,255,.9);
+  box-shadow: var(--sombra-3d);
+  backdrop-filter: blur(14px);
+}
+
+.boton {
+  min-height: 44px;
+  border-radius: 13px;
+  transition:
+    transform .2s ease,
+    box-shadow .2s ease,
+    background .2s ease;
+}
+
+.boton-principal {
+  color: #fff;
+  border-color: transparent;
+  background: linear-gradient(
+    110deg,#176eea,#7452f6,#d43fc1
+  );
+  box-shadow:
+    0 6px 0 rgba(61,48,154,.25),
+    0 12px 22px rgba(103,70,220,.22);
+}
+
+.boton-principal:hover {
+  background: linear-gradient(
+    110deg,#145cce,#6240de,#b62ea5
+  );
+  transform: translateY(-2px);
+  box-shadow:
+    0 8px 0 rgba(61,48,154,.22),
+    0 15px 26px rgba(103,70,220,.28);
+}
+
+.boton-principal:active {
+  transform: translateY(3px);
+  box-shadow: 0 2px 0 rgba(61,48,154,.25);
+}
+
+.boton-secundario {
+  border-color: #c9d4ff;
+  background: rgba(255,255,255,.95);
+  box-shadow: 0 4px 12px rgba(45,63,115,.08);
+}
+
+input[type="text"],
+input[type="password"],
+input[type="email"],
+input[type="tel"],
+input[type="date"],
+input[type="search"],
+select,
+textarea {
+  min-height: 44px;
+  border-radius: 12px;
+  border: 1px solid #c8d2f1;
+  background: #fff;
+  transition: border-color .2s, box-shadow .2s;
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  border-color: #7659ea;
+  box-shadow: 0 0 0 4px rgba(135,82,255,.13);
+}
+
+.pestana {
+  border-radius: 999px;
+  transition: transform .2s, box-shadow .2s;
+}
+
+.pestana[aria-selected="true"] {
+  color: #fff;
+  border-color: transparent;
+  background: linear-gradient(110deg,#2869ed,#8854f5);
+  box-shadow: 0 5px 14px rgba(90,84,225,.22);
+}
+
+.pasos li.actual {
+  background: linear-gradient(110deg,#2869ed,#8854f5);
+  border-color: transparent;
+}
+
+.tabla th {
+  background: #eef1ff;
+  color: #27356e;
+}
+
+.tabla tbody tr:hover {
+  background: #f4f1ff;
+}
+
+.etiqueta {
+  padding: 5px 11px;
+  font-weight: 700;
+}
+
+.contenido {
+  max-width: 1200px;
+}
+
+@media (max-width: 600px) {
+  .contenido {
+    padding: 20px 14px 36px;
+  }
+
+  .tarjeta {
+    padding: 16px;
+  }
+
+  .boton {
+    min-height: 46px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .boton,
+  .pestana,
+  input,
+  select,
+  textarea {
+    transition: none;
+  }
+}
