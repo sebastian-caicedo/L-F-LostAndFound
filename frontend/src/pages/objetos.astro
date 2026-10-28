@@ -160,3 +160,178 @@ import { CATEGORIAS } from '../lib/objetos.js';
 
   cargar();
 </script>
+
+
+<style>
+/* LOSTANDFOUND — OBJETOS 3D */
+
+.encabezado {
+  margin-bottom: 28px;
+  align-items: center;
+}
+
+.encabezado h1 {
+  font-size: clamp(2rem, 4vw, 2.8rem);
+  font-weight: 900;
+  background: linear-gradient(
+    105deg, #097fdc, #7950ed, #e344b4
+  );
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.encabezado .ayuda {
+  max-width: 650px;
+  line-height: 1.65;
+}
+
+.grupos-pestanas {
+  padding: 18px;
+  border: 1px solid rgba(255,255,255,.8);
+  border-radius: 22px;
+  background: rgba(255,255,255,.82);
+  box-shadow: 0 12px 30px rgba(35,49,108,.08);
+  backdrop-filter: blur(14px);
+}
+
+.grupo-pestanas-titulo {
+  color: #39466f;
+  font-weight: 800;
+}
+
+.pestana {
+  min-height: 40px;
+  padding: 9px 16px;
+  background: #f5f6ff;
+  border: 1px solid #d9dff8;
+  border-radius: 999px;
+  font-weight: 700;
+  transition: transform .2s, box-shadow .2s;
+}
+
+.pestana:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 5px 12px rgba(91,75,193,.12);
+}
+
+.pestana[aria-selected="true"] {
+  color: #fff;
+  border-color: transparent;
+  background: linear-gradient(
+    110deg, #078fdf, #7951ed, #d844b6
+  );
+  box-shadow: 0 5px 15px rgba(99,72,211,.25);
+}
+
+.filtros {
+  padding: 22px;
+  margin-bottom: 22px;
+  border: 1px solid rgba(255,255,255,.85);
+  border-radius: 22px;
+  background: rgba(255,255,255,.9);
+  box-shadow: 0 12px 30px rgba(35,49,108,.08);
+  backdrop-filter: blur(14px);
+}
+
+.filtros .campo {
+  flex: 1 1 220px;
+}
+
+.filtros label {
+  color: #293764;
+  font-weight: 750;
+}
+
+.filtros input {
+  min-height: 46px;
+  background: #fbfbff;
+  border-radius: 13px;
+}
+
+.conteo {
+  font-weight: 700;
+  color: #53628d;
+}
+
+.envoltura-tabla {
+  overflow-x: auto;
+  border: 1px solid #dfe5fa;
+  border-radius: 24px;
+  background: rgba(255,255,255,.94);
+  box-shadow: 0 16px 38px rgba(35,49,108,.11);
+}
+
+.tabla {
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.tabla th {
+  padding: 17px 15px;
+  background: linear-gradient(
+    110deg, #182e65, #403f93
+  );
+  color: #fff;
+  font-weight: 750;
+  border: 0;
+}
+
+.tabla td {
+  padding: 16px 15px;
+  border-top: 1px solid #ecedfa;
+}
+
+.tabla tbody tr {
+  transition: background .2s;
+}
+
+.tabla tbody tr:hover {
+  background: #f1efff;
+}
+
+.tabla .boton {
+  white-space: nowrap;
+  border-radius: 11px;
+}
+
+.vacio {
+  padding: 35px 22px;
+  text-align: center;
+  color: #607090;
+}
+
+@media (max-width: 600px) {
+  .grupos-pestanas,
+  .filtros {
+    padding: 14px;
+    border-radius: 18px;
+  }
+
+  .grupo-pestanas {
+    gap: 7px;
+  }
+
+  .pestana {
+    padding: 8px 12px;
+    font-size: .85rem;
+  }
+
+  .filtros .campo {
+    flex-basis: 100%;
+  }
+
+  .tabla th,
+  .tabla td {
+    padding: 12px 11px;
+    font-size: .88rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pestana,
+  .tabla tbody tr {
+    transition: none;
+  }
+}
+</style>
